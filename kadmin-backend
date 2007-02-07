@@ -1,0 +1,102 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+# K4 OPTIONS
+my $K4_KADMIN = "/usr/local/sbin/kadmin";
+my $K4_PRINC  = "service.lsdb";
+my $K4_SRVTAB = "/etc/leland/srvtab.lsdb";
+
+# K5 OPTIONS
+my $K5_KADMIN = "/usr/local/sbin/k5admin";
+my $K5_PRINC  = "service/lsdb";
+my $K5_KEYTAB = "/etc/leland/keytab.lsdb";
+
+# Check a principal and make sure it's one that we're allowed to use.  The
+# requirements are that the principal have a NULL instance and that it not be
+# the special principal "admin".
+sub check_principal {
+    my ($principal) = @_;
+    if ($principal =~ m%[./]% || $principal eq 'admin') {
+        die "error: invalid principal $principal\n";
+    }
+}
+
+my $cmd = shift;
+
+if ($cmd eq 'change_passwd') {
+
+    my $princ = shift || die "error: missing principal\n";
+    my $oldpass = shift || die "error: missing old-passwd\n";
+    my $pass  = shift || die "error: missing new-passwd\n";
+
+    exec ($K4_KADMIN, $cmd, $princ, $oldpass, $pass)
+	or die "error: can't exec $K4_KADMIN\n";
+
+} elsif ($cmd eq 'check_passwd' || $cmd eq 'reset_passwd') {
+
+    my $princ = shift || die "error: missing principal\n";
+    my $pass  = shift || die "error: missing password\n";
+
+    check_principal ($princ);
+    exec ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, $cmd, 
+	  $princ, $pass) or die "error: can't exec $K4_KADMIN\n";
+
+} elsif ($cmd eq 'create') {
+
+    my $princ = shift || die "error: missing principal\n";
+    my $pass  = shift || die "error: missing password\n";
+    my $status  = shift || die "error: missing enabled/disabled\n";
+
+    check_principal ($princ);
+    exec ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, $cmd, 
+	  $princ, $pass, $status) or die "error: can't exec $K4_KADMIN\n";
+
+} elsif ($cmd eq 'delete' || $cmd eq 'disable' || $cmd eq 'enable') {
+
+    my $princ = shift || die "error: missing principal\n";
+
+    check_principal ($princ);
+    exec ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, $cmd, $princ) or 
+	die "error: can't exec $K4_KADMIN\n";
+} elsif ($cmd eq 'examine') {
+    my $princ = shift || die "error: missing principal\n";
+
+    if ($princ =~ /\'/) {
+	die "error: invalid character in principal name\n";
+    }
+
+    system($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, 'examine', $princ);
+    print "----------------------------------------\n";
+    if ($princ =~ /\./) {
+	$princ =~ s/\./\//g;
+    }
+
+    open(K5STATUS, 
+	 "$K5_KADMIN -p $K5_PRINC -q 'getprinc $princ' -k -t $K5_KEYTAB |")
+	|| die "error: can't run k5 admin\n";
+
+    my $output = '';
+    while (<K5STATUS>) {
+	# no need to return this line
+	next if /Authenticating as principal/; 
+	$output .= $_;
+    }
+    close K5STATUS || die "error: can't run k5 admin\n";
+    print $output;
+} elsif ( $cmd eq 'help') {
+    print <<'EOF';
+  kadmin change_passwd {principal} {old-passwd} {new-passwd}
+  kadmin check_passwd  {principal} {passwd}
+  kadmin create        {principal} {passwd} enabled|disabled
+  kadmin delete        {principal}
+  kadmin disable       {principal}
+  kadmin enable        {principal}
+  kadmin examine       {principal}
+  kadmin reset_passwd  {principal} {passwd}
+EOF
+} else {
+    die "error: unknown cmd: $cmd\n";
+}
+
+exit 0;
