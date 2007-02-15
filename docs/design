@@ -1,0 +1,192 @@
+                         kadmin remctl Interface
+                           Design Documentation
+
+                                  $Date$
+
+Overview
+
+    In order to abstract changes in the kadmin interface between different
+    versions of Kerberos, to integrate handling of our different realms,
+    to provide a cleaner interface for Java applications, and to provide
+    finer-grained access control than the standard kadmin ACL system, we
+    provide a remctl interface to kadmin.  This interface provides the
+    following functions:
+
+        change_passwd <principal> <old> <new>
+        check_passwd  <principal> <password>
+        create        <principal> <password> (enabled | disabled)
+        delete        <principal>
+        disable       <principal>
+        enable        <principal>
+        examine       <principal>
+        reset_passwd  <principal> <password>
+
+    Systems that use this interface authenticate via remctl and issue the
+    appropriate command.  remctl performs ACL checking and the backend
+    script performs additional checking, and then it uses its own
+    credentials to make the appropriate changes in Kerberos (possibly in
+    multiple realms at the same time).
+
+    Separately, we provide a special interface to support password reset
+    by Help Desk personnel.  This is done via a different interface, since
+    we want to require users re-authenticate when changing someone else's
+    password.  That interface is also described below.
+
+    This code assumes the use of krb5-sync to manage status and password
+    synchronization between different Kerberos realms.  This means that
+    password changes are automatically synchronized from Kerberos v5 to
+    other realms, and enable and disable changes are automatically
+    synchronized from Kerberos v5 to Active Directory.  Account status
+    changes, creation, and deletion must be done separately in Kerberos v5
+    and AFS kaserver.  This code assumes that Active Directory account
+    creation and deletion is handled via some other means but that the
+    password isn't set correctly in Active Directory on account creation.
+    Therefore, on account creation, a password change is also queued for
+    Active Directory.
+
+kadmin Actions
+
+  change_passwd <principal> <old> <new>
+
+    This provides an interface for a user to change their password if they
+    already know their password.  The backend must use the kpasswd command
+    line program, not kadmin, to do the password change since otherwise it
+    would have to do a separate validation of the current password.  The
+    password change will propagate into other environments without further
+    work, so only calling kpasswd is required.  This means that Kerberos
+    v5 kpasswd must be available on the system running the kadmin backend.
+
+    For backward compatibility with the current Stanford.You, any error
+    message from kpasswd (such as indicating that the password isn't long
+    enough or is based on a dictionary word) should be returned prefixed
+    with "retstr: " on one line.
+
+    This interface should explicitly disallow any principal with a
+    non-NULL instance.  root and admin instances should use kpasswd
+    themselves to change passwords, and service keys should be handled
+    through the keytab deployment system.
+
+  check_passwd <principal> <password>
+
+    This interface checks a password for strength without changing a
+    password.  It's used as part of the UI flow for Stanford.You.  It
+    takes a principal as the first argument only for backward
+    compatibility; Kerberos v4 kadmind used to require that.
+
+    Since Kerberos v5 kadmind doesn't support an explicit function to do
+    this, we have to fake it by actually changing a password.  For this
+    purpose, we must create a separate principal solely for testing
+    password changes.  That principal should be set DISALLOW_ALL_TIX so
+    that users can't then use that principal to authenticate to something
+    after testing a password.  This principal needs to have a password
+    policy assigned in Kerberos v5 so that the dictionary check is
+    performed, and should have the same length restrictions as the regular
+    user password policy, but it must allow any reuse of passwords even if
+    the normal user password policy does not.
+
+    The backend can use kadmin to check this by changing the password for
+    that designated principal.  Any error message returned by kadmin needs
+    to be returned to the client prefixed with "retstr: " and on one line,
+    for backwards compatibility.  The exit status should always be 0, even
+    if the password failed strength checking; a non-zero exit status
+    should only be used if an error occurred and the password strength
+    could not be checked.
+
+  create <principal> <password> (enabled | disabled)
+
+    Creates a new principal.  We assume that Active Directory will get new
+    principals created via some other means, so the principal is only
+    created in Kerberos v4 and Kerberos v5.  The last flag says whether to
+    create the account enabled or disabled.  Account creation in Kerberos
+    v5 can be done via the normal kadmin process.  New accounts should be
+    created with requires_preauth and a password policy of "standard".
+    Account creation in Kerberos v4 will probably be done using the same
+    program as is used to create Kerberos v4 srvtabs, setting the key to a
+    random value.
+
+    To synchronize the password after account creation, this backend will
+    then have to make a remctl call to the Kerberos master and queue a
+    password change for Active Directory and probably for AFS kaserver for
+    the new password.
+
+    If the account is to be created disabled, we pass -allow_tix on the
+    initial creation and make a Kerberos v4 kadmin call to disable the
+    account after creation in Kerberos v4 (or, better, create the account
+    disabled if that functionality is available in the program used to
+    create the account).  Active Directory is handled via a different
+    means outside of htis process.
+
+    This interface should reject all attempts to create accounts with
+    non-null instances.  All service principals, root, and admin
+    principals should be dealt with via other means.
+
+  delete <principal>
+
+    Deletes the principal out of Kerberos v5 and AFS kaserver (again,
+    Active Directory is handled via other means).  This must be done
+    separately in Kerberos v5 (via kadmin delprinc) and in the AFS
+    kaserver (via means yet to be determined).
+
+    This interface should reject all attempts to delete accounts with
+    non-null instances.  Deletion of root and admin instances will have to
+    be handled separately until AFS kaserver is retired.  Deletion of
+    service keys will be handled by the wallet.
+
+  disable <principal>
+  enable <principal>
+
+    These functions set or clear the DISALLOW_ALL_TIX attribute on the
+    account in Kerberos v5 via kadmin modprinc and make disable or enable
+    calls to Kerberos v4 kadmind to do the same in the AFS kaserver realm.
+    Propagation to Active Directory will be handled by the Kerberos v5
+    server via krb5-sync.
+
+    This interface should reject all attempts to modify accounts with
+    non-null instances.  All service principals, root, and admin
+    principals should be dealt with via other means.
+
+  examine <principal>
+
+    Returns the results of a Kerberos v4 kadmin examine followed by a
+    Kerberos v5 kadmin examine, separated by a line of forty hyphens and a
+    newline.  This interface will have to change when the AFS kaserver is
+    switched off, which will have implications for Regadmin.
+
+  reset_passwd <principal> <password>
+
+    Used by authorized users to reset passwords without knowing the old
+    password.  This is done through the Kerberos v5 kadmin cpw interface,
+    which then propagates the password change to the other environments.
+    It must reject changes for non-null instances and for any user who is
+    on the list of users authorized to change other people's passwords via
+    the separate Help Desk password change interface.  It also needs to
+    have a way to take an additional list of users whose passwords cannot
+    be changed this way.  This interface is used by the SUNet ID self-help
+    pages, which allow users to change their password by providing some
+    personal information and a personal fact.
+
+Help Desk Password Changes
+
+    The Help Desk password change tool, passwd_change, uses a separate
+    interface to a remctl server running on a different port and only
+    supporting a password change command.  That separate remctld uses a
+    service principal for authentication that's set DISALLOW_TGTBASED in
+    the Kerberos v5 KDC, thus requiring anyone using this tool to do a
+    separate password authentication before changing someone's password.
+
+    Beyond that, this interface on the backend looks essentially the same
+    as reset_passwd, including the requirement of checking and disallowing
+    changes of passwords for principals who can themselves change
+    passwords and supporting an additional list of principals for whom
+    password changes by the Help Desk should not be allowed.  This list
+    may be different (smaller) than the list for the reset_passwd
+    interface since this interface is more secure than the SUNet ID
+    self-help pages.
+
+    We do not expect anyone to use remctl to access this interface
+    directly.  They would have to know the correct service principal to
+    use and would have to run a special kinit command to obtain the right
+    service ticket in order to do so.  Instead, they will run a binary
+    called passwd_change that presents some information about the SUNet
+    ID, asks them to confirm, does a special authentication, and then
+    contacts this service via remctl using the C remctl client library.
