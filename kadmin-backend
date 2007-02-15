@@ -1,26 +1,123 @@
 #!/usr/bin/perl -w
+our $ID = q$Id$;
+#
+# kadmin-backend -- remctl interface to kadmin functionality.
+#
+# Written by Russ Allbery <rra@stanford.edu>
+# Based heavily on work by Roland Schemers
+# Copyright 2003, 2007 Board of Trustees, Leland Stanford Jr. University
+#
+# Permission to use, copy, modify, and distribute this software and its
+# documentation for any purpose and without fee is hereby granted, provided
+# that the above copyright notice appear in all copies and that both that
+# copyright notice and this permission notice appear in supporting
+# documentation, and that the name of Stanford University not be used in
+# advertising or publicity pertaining to distribution of the software without
+# specific, written prior permission.  Stanford University makes no
+# representations about the suitability of this software for any purpose.  It
+# is provided "as is" without express or implied warranty.
+#
+# THIS SOFTWARE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+##############################################################################
+# Modules and declarations
+##############################################################################
 
 use strict;
 
+use Expect ();
+
 # K4 OPTIONS
-my $K4_KADMIN = "/usr/local/sbin/kadmin";
-my $K4_PRINC  = "service.lsdb";
-my $K4_SRVTAB = "/etc/leland/srvtab.lsdb";
+our $K4_KADMIN = "/usr/local/sbin/kadmin";
+our $K4_PRINC  = "service.lsdb";
+our $K4_SRVTAB = "/etc/leland/srvtab.lsdb";
 
 # K5 OPTIONS
-my $K5_KADMIN = "/usr/local/sbin/k5admin";
-my $K5_PRINC  = "service/lsdb";
-my $K5_KEYTAB = "/etc/leland/keytab.lsdb";
+our $K5_KADMIN = "/usr/local/sbin/k5admin";
+our $K5_PRINC  = "service/lsdb";
+our $K5_KEYTAB = "/etc/leland/keytab.lsdb";
+
+# Account used to test password strength.
+our $STRENGTH  = 'service/password-strength';
+
+##############################################################################
+# Utility functions
+##############################################################################
 
 # Check a principal and make sure it's one that we're allowed to use.  The
-# requirements are that the principal have a NULL instance and that it not be
-# the special principal "admin".
+# requirements are that the principal have a NULL instance, that it fit the
+# form of a regular SUNet ID, and that it not be the special principal
+# "admin".
 sub check_principal {
     my ($principal) = @_;
-    if ($principal =~ m%[./]% || $principal eq 'admin') {
-        die "error: invalid principal $principal\n";
+    if ($principal !~ /^[a-z][0-9][a-z]{2,7}\z/ || $principal eq 'admin') {
+        die "Invalid principal: $principal\n";
     }
 }
+
+# Check if we can use a password.  We have to do a bit of sanity checking even
+# though we're talking to Expect.
+sub check_password {
+    my ($password) = @_;
+    if ($password =~ /[\x00-\x08\x0a-\x1f]/) {
+        die "Invalid control characters in password\n";
+    }
+}
+
+# Spawn a conversation with k5admin and return an Expect object.
+sub spawn_k5admin {
+    my @args = ('-p', $K5_PRINC, '-k', '-t', $K5_KEYTAB);
+    my $k5admin = Expect->spawn ($K5_KADMIN, @args);
+    unless ($k5admin) {
+        die "Cannot run $K5_KADMIN\n";
+    }
+    return $k5admin;
+}
+
+##############################################################################
+# Password strength checking
+##############################################################################
+
+# The K5 kadmin interface doesn't support checking the strength of a password
+# without trying to change a password.  We therefore test the strength of a
+# password by changing the password of a designated special account (which is
+# also set DISABLE_ALL_TIX) with the same password policy as our user accounts
+# and seeing if the password is accepted.
+#
+# On success, do nothing.  On failure, die with the error message from K5
+# kadmin.
+sub validate_password {
+    my ($password) = @_;
+    check_password ($password);
+    my $k5admin = spawn_k5admin;
+    unless ($k5admin->expect (2, 'kadmin:')) {
+        die "Cannot talk to $K5_KADMIN\n";
+    }
+    $k5admin->send ("cpw $STRENGTH\n");
+    unless ($k5admin->expect (2, 'password for principal')) {
+        die "Cannot talk to $K5_KADMIN\n";
+    }
+    $k5admin->send ("$password\n");
+    unless ($k5admin->expect (2, 'password for principal')) {
+        die "Cannot talk to $K5_KADMIN\n";
+    }
+    $k5admin->send ("$password\n");
+    my ($num, $error, $match, $before, $after)
+        = $k5admin->expect (2, 'change_password: ', 'kadmin: ');
+    if ($num == 1) {
+        $after =~ s/ while changing.*//;
+        die "retstr: $after\n";
+    } else {
+        $k5admin->send ("quit\n");
+        $k5admin->soft_close;
+    }
+}
+
+##############################################################################
+# Main routine
+##############################################################################
 
 my $cmd = shift;
 
@@ -33,7 +130,16 @@ if ($cmd eq 'change_passwd') {
     exec ($K4_KADMIN, $cmd, $princ, $oldpass, $pass)
 	or die "error: can't exec $K4_KADMIN\n";
 
-} elsif ($cmd eq 'check_passwd' || $cmd eq 'reset_passwd') {
+} elsif ($cmd eq 'check_passwd') {
+
+    # The principal is accepted for compatibilty with older versions but
+    # completely ignored.
+    my $princ = shift;
+    my $pass  = shift or die "error: missing password\n";
+
+    validate_password ($pass);
+
+} elsif ($cmd eq 'reset_passwd') {
 
     my $princ = shift || die "error: missing principal\n";
     my $pass  = shift || die "error: missing password\n";
