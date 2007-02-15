@@ -108,7 +108,8 @@ sub validate_password {
         = $k5admin->expect (2, 'change_password: ', 'kadmin: ');
     if ($num == 1) {
         $after =~ s/ while changing.*//;
-        die "retstr: $after\n";
+        print "retstr: $after\n";
+        $k5admin->soft_close;
     } else {
         $k5admin->send ("quit\n");
         $k5admin->soft_close;
