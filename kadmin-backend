@@ -30,9 +30,11 @@ use strict;
 use Expect ();
 
 # K4 OPTIONS
-our $K4_KADMIN = "/usr/local/sbin/kadmin";
-our $K4_PRINC  = "service.lsdb";
-our $K4_SRVTAB = "/etc/leland/srvtab.lsdb";
+our $K4_KADMIN = '/usr/local/sbin/kadmin';
+our $K4_PRINC  = 'service.lsdb';
+our $K4_SRVTAB = '/etc/leland/srvtab.lsdb';
+our $K4_ADMIN  = 'admin';
+our $K4_KEY    = '/db/srvtab/keys/admin';
 
 # K5 OPTIONS
 our $K5_KADMIN = "/usr/local/sbin/k5admin";
@@ -41,6 +43,9 @@ our $K5_KEYTAB = "/etc/leland/keytab.lsdb";
 
 # Account used to test password strength.
 our $STRENGTH  = 'service/password-strength';
+
+# Path to kasetkey, used to create Kerberos v4 principals in an AFS kaserver.
+our $KASETKEY  = '/usr/local/bin/gen_srvtab';
 
 ##############################################################################
 # Utility functions
@@ -53,7 +58,7 @@ our $STRENGTH  = 'service/password-strength';
 sub check_principal {
     my ($principal) = @_;
     if ($principal !~ /^[a-z][0-9][a-z]{2,7}\z/ || $principal eq 'admin') {
-        die "Invalid principal: $principal\n";
+        die "error: invalid principal: $principal\n";
     }
 }
 
@@ -62,7 +67,7 @@ sub check_principal {
 sub check_password {
     my ($password) = @_;
     if ($password =~ /[\x00-\x08\x0a-\x1f]/) {
-        die "Invalid control characters in password\n";
+        die "error: invalid control characters in password\n";
     }
 }
 
@@ -71,9 +76,23 @@ sub spawn_k5admin {
     my @args = ('-p', $K5_PRINC, '-k', '-t', $K5_KEYTAB);
     my $k5admin = Expect->spawn ($K5_KADMIN, @args);
     unless ($k5admin) {
-        die "Cannot run $K5_KADMIN\n";
+        die "error: cannot run $K5_KADMIN\n";
     }
     return $k5admin;
+}
+
+# Run a k5admin command and capture the output.  Return a list consisting of
+# the exit status and the output, or in a scalar context, just the exit
+# status.
+sub run_k5admin {
+    my ($command) = @_;
+    my @args = ('-p', $K5_PRINC, '-k', '-t', $K5_KEYTAB, '-q', $command);
+    open (K5ADMIN, '-|', $K5_KADMIN, @args)
+        or die "error: cannot run $K5_KADMIN\n";
+    my @output = <K5KADMIN>;
+    close K5KADMIN;
+    my $status = ($? >> 8);
+    return wantarray ? ($status, join ('', @output)) : $status;
 }
 
 ##############################################################################
@@ -93,21 +112,78 @@ sub validate_password {
     check_password ($password);
     my $k5admin = spawn_k5admin;
     unless ($k5admin->expect (2, 'kadmin:')) {
-        die "Cannot talk to $K5_KADMIN\n";
+        die "error: cannot talk to $K5_KADMIN\n";
     }
-    $k5admin->send ("cpw $STRENGTH\n");
+    $k5admin->send ("change_password $STRENGTH\n");
     unless ($k5admin->expect (2, 'password for principal')) {
-        die "Cannot talk to $K5_KADMIN\n";
+        die "error: cannot talk to $K5_KADMIN\n";
     }
     $k5admin->send ("$password\n");
     unless ($k5admin->expect (2, 'password for principal')) {
-        die "Cannot talk to $K5_KADMIN\n";
+        die "error: cannot talk to $K5_KADMIN\n";
     }
     $k5admin->send ("$password\n");
     my ($num, $error, $match, $before, $after)
         = $k5admin->expect (2, 'change_password: ', 'kadmin: ');
     if ($num == 1) {
         $after =~ s/ while changing.*//;
+        print "retstr: $after\n";
+        $k5admin->soft_close;
+    } else {
+        $k5admin->send ("quit\n");
+        $k5admin->soft_close;
+    }
+}
+
+##############################################################################
+# Account creation
+##############################################################################
+
+# Create a principal.  First, create a K4 account with a random password and
+# set its status.  Then, create the account in K5, which will reset the
+# password in K4.  The account creation will also queue a password change for
+# AD.  Active Directory account creation is handled separately.  $status is
+# either enabled or disabled and controls the initial account status.
+sub create_principal {
+    my ($principal, $password, $status);
+    check_principal ($principal);
+    check_password ($password);
+    my $exist = run_k5admin ("getprinc $principal");
+    if ($exist) {
+        die "error: account $principal already exists\n";
+    }
+    my $code = system ($KASETKEY, '-k', $K4_KEY, '-a', $K4_ADMIN, '-r',
+                       '-s', $principal);
+    if ($code != 0) {
+        die "error: cannot create K4 principal for $principal\n";
+    }
+    if ($status ne 'enabled') {
+        my $code = system ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB,
+                           'disable', $principal);
+        if ($code != 0) {
+            die "error: cannot disable K4 principal for $principal\n";
+        }
+    }
+    my $command = 'add_principal -policy standard +requires_preauth';
+    if ($status ne 'enabled') {
+        $command .= ' -allow_tix';
+    }
+    my $k5admin = spawn_k5admin;
+    unless ($k5admin->expect (2, 'kadmin:')) {
+        die "error: cannot talk to $K5_KADMIN\n";
+    }
+    $k5admin->send ("$command\n");
+    unless ($k5admin->expect (2, 'password for principal')) {
+        die "error: cannot talk to $k5_KADMIN\n";
+    }
+    $k5admin->send ("$password\n");
+    unless ($k5admin->expect (2, 'password for principal')) {
+        die "error: cannot talk to $k5_KADMIN\n";
+    }
+    $k5admin->send ("$password\n");
+    my ($num, $error, $match, $before, $after)
+        = $k5admin->expect (2, 'add_principal: ', 'kadmin: ');
+    if ($num == 1) {
         print "retstr: $after\n";
         $k5admin->soft_close;
     } else {
@@ -151,13 +227,14 @@ if ($cmd eq 'change_passwd') {
 
 } elsif ($cmd eq 'create') {
 
-    my $princ = shift || die "error: missing principal\n";
-    my $pass  = shift || die "error: missing password\n";
-    my $status  = shift || die "error: missing enabled/disabled\n";
+    my $princ  = shift or die "error: missing principal\n";
+    my $pass   = shift or die "error: missing password\n";
+    my $status = shift or die "error: missing enabled/disabled\n";
+    if ($status ne 'enabled' && $status ne 'disabled') {
+        die "error: invalid status: $status\n";
+    }
 
-    check_principal ($princ);
-    exec ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, $cmd, 
-	  $princ, $pass, $status) or die "error: can't exec $K4_KADMIN\n";
+    create_principal ($princ, $pass, $status);
 
 } elsif ($cmd eq 'delete' || $cmd eq 'disable' || $cmd eq 'enable') {
 
@@ -166,6 +243,7 @@ if ($cmd eq 'change_passwd') {
     check_principal ($princ);
     exec ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, $cmd, $princ) or 
 	die "error: can't exec $K4_KADMIN\n";
+
 } elsif ($cmd eq 'examine') {
     my $princ = shift || die "error: missing principal\n";
 
@@ -191,6 +269,7 @@ if ($cmd eq 'change_passwd') {
     }
     close K5STATUS || die "error: can't run k5 admin\n";
     print $output;
+
 } elsif ( $cmd eq 'help') {
     print <<'EOF';
   kadmin change_passwd {principal} {old-passwd} {new-passwd}
@@ -202,6 +281,7 @@ if ($cmd eq 'change_passwd') {
   kadmin examine       {principal}
   kadmin reset_passwd  {principal} {passwd}
 EOF
+
 } else {
     die "error: unknown cmd: $cmd\n";
 }

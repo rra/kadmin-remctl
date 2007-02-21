@@ -102,19 +102,19 @@ kadmin Actions
     created with requires_preauth and a password policy of "standard".
     Account creation in Kerberos v4 will probably be done using the same
     program as is used to create Kerberos v4 srvtabs, setting the key to a
-    random value.
+    random value, and then letting password synchronization fix it.
 
-    To synchronize the password after account creation, this backend will
-    then have to make a remctl call to the Kerberos master and queue a
-    password change for Active Directory and probably for AFS kaserver for
-    the new password.
+    Creating a new account in Kerberos v5 automatically triggers password
+    synchronization, so we create the Kerberos v4 account first.  The AD
+    password change will queue until the account is created in AD, which
+    is handled via other means.
 
     If the account is to be created disabled, we pass -allow_tix on the
     initial creation and make a Kerberos v4 kadmin call to disable the
     account after creation in Kerberos v4 (or, better, create the account
     disabled if that functionality is available in the program used to
     create the account).  Active Directory is handled via a different
-    means outside of htis process.
+    means outside of this process.
 
     This interface should reject all attempts to create accounts with
     non-null instances.  All service principals, root, and admin
@@ -152,6 +152,10 @@ kadmin Actions
     newline.  This interface will have to change when the AFS kaserver is
     switched off, which will have implications for Regadmin.
 
+    For this one case, it would be useful to support any principal and do
+    the conversion between Kerberos v4 and Kerberos v5 principal names.
+    This is optional, however.
+
   reset_passwd <principal> <password>
 
     Used by authorized users to reset passwords without knowing the old
@@ -164,6 +168,11 @@ kadmin Actions
     be changed this way.  This interface is used by the SUNet ID self-help
     pages, which allow users to change their password by providing some
     personal information and a personal fact.
+
+    This interface should explicitly disallow any principal with a
+    non-NULL instance.  root and admin instances should use kpasswd
+    themselves to change passwords, and service keys should be handled
+    through the keytab deployment system.
 
 Help Desk Password Changes
 
