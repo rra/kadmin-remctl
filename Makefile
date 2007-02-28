@@ -2,7 +2,7 @@
 
 CC	= gcc
 CFLAGS	= -O2 -Wall
-LIBS	= -lcom_err -lsunetkadm -lkadm -lkrb -ldes -lsocket -lnsl
+LIBS	= -lremctl -lkrb5 -lcom_err
 
 all: passwd_change
 

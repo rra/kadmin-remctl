@@ -1,146 +1,127 @@
-/* passwd_change.c -- Allow authorized users to change passwords.
-   $Id: passwd_change.c,v 0.7 1998/01/14 02:54:16 eagle Exp $
-
-   Written by Russ Allbery <rra@stanford.edu>
-   Copyright 1997 by the Board of Trustees, Leland Stanford Jr. University
-
-   This program allows authorized users to change the passwords of other
-   users.  It talks to kadmind on the Kerberos auth servers via the
-   sunetkadm library and implements a subset of the standard kadmin
-   functionality (with more verbose prompting and the ability to read the
-   username of the principal whose password should be changed from the
-   command line). */
+/*  $Id: passwd_change.c,v 0.7 1998/01/14 02:54:16 eagle Exp $
+**
+**  This program allows authorized users to change the passwords of other
+**  users.  It talks to a remctl interface via the libremctl library and only
+**  implements password changing, with verbose prompting and the ability to
+**  read the username of the principal whose password should be changed from
+**  the command line).
+**
+**  Written by Russ Allbery <rra@stanford.edu>
+**  Copyright 1997, 2007 Board of Trustees, Leland Stanford Jr. University
+*/
 
 /***************************************************************************
 * Includes, defines, prototypes, and global variables
 ***************************************************************************/
 
+#include <errno.h>              /* errno */
 #include <signal.h>             /* signal(), SIGINT, SIGTERM, etc. */
 #include <stdio.h>              /* fprintf(), sprintf(), printf(), etc. */
 #include <stdlib.h>             /* exit(), malloc(), free() */
-#include <string.h>             /* strncpy(), memset() */
+#include <string.h>             /* strncpy(), memset(), strerror() */
 
-#include <com_err.h>            /* Common error handling interface */
-#include <kadm_err.h>           /* Interface to kadmin errors */
-#include <krb.h>                /* General Kerberos interface */
-#include <krb_err.h>            /* Interface to Kerberos errors */
-#include <sunet_kadm.h>         /* SUNetID kadmin interface library */
+#include <com_err.h>            /* Kerberos error reporting */
+#include <krb5.h>               /* General Kerberos interface */
+#include <remctl.h>             /* remctl client library */
 
 /* The full path to the site-wide password file, for real name mapping. */
 #define PASSWD_FILE "/afs/ir/service/etc/passwd.all"
 
-/* Kerberos functions without prototypes. */
-int des_read_pw_string ();
-int tf_init ();
-int tf_get_pname ();
-int tf_close ();
+/* The principal name used for password changing. */
+#define PRINCIPAL "service/password-change@stanford.edu"
+
+/* The host and port to which the remctl connection should be made. */
+#define HOST "lsdb.stanford.edu"
+#define PORT 4443
+
+/* The memory cache used for the password change authentication. */
+#define CACHE_NAME "MEMORY:passwd_change"
 
 /* Local functions. */
-static void cleanup (int signal);
 static char *find_name (char *username);
-static int login ();
-static void logout ();
-static int reset_passwd (char *principal);
-
-/* Whether we need to log out from the authentication server. */
-static int do_fini = 0;
+static int login (void);
+static int reset_password (char *principal);
 
 /* The name of this program (will be taken from argv[0]). */
 static char *program;
 
 
 /***************************************************************************
-* Signal handling
-***************************************************************************/
-
-/* If we need to log out, do so, and then exit.  This is the signal handler
-   for the standard fatal signals. */
-
-static void
-cleanup (int signal)
-{
-  if (do_fini) sunetid_kadm_fini ();
-  exit (1);
-}
-
-
-/***************************************************************************
 * Kerberos authentication
 ***************************************************************************/
 
-/* Open a connection to kadmind and authenticate to the server.  This
-   creates a new ticket file and obtains the changepw.kerberos ticket which
-   will then be used to change the user's password. */
+/* Open a connection to kadmind and authenticate to the server.  This creates
+   a new ticket file and obtains the service/password-change ticket which will
+   then be used to change the user's password. */
 
 static int
-login ()
+login (void)
 {
-  char pass[128];
-  char principal[ANAME_SZ];
-  char *file, *prompt;
-  int status;
+  krb5_context ctx;
+  krb5_error_code status;
+  krb5_ccache ccache;
+  krb5_principal princ;
+  krb5_creds creds;
+  krb5_get_init_creds_opt opts;
 
   /* First of all, we have to figure out what the admin principal is.  We do
      that by parsing the user's credential cache. */
-  file = getenv ("KRBTKFILE");
-  if (file == NULL) file = TKT_FILE;
-  status = tf_init (file, R_TKT_FIL);
-  if (!status) status = tf_get_pname (principal);
-  tf_close ();
-  if (status)
+  status = krb5_init_context(&ctx);
+  if (status != 0)
     {
-      com_err (program, status, "while attempting to read ticket file");
+      com_err (program, status, "while initializing Kerberos");
       return -1;
     }
+  status = krb5_cc_default(ctx, &ccache);
+  if (status != 0)
+    {
+      com_err (program, status, "while reading ticket cache");
+      return -1;
+    }
+  status = krb5_cc_get_principal (ctx, ccache, &princ);
+  if (status != 0)
+    {
+      com_err (program, status, "while getting principal name");
+      krb5_cc_close (ctx, ccache);
+      return -1;
+    }
+  krb5_cc_close (ctx, ccache);
 
-  /* Now, we have the user's principal in principal.  Prompt for the user's
-     password. */
-  prompt = (char *) malloc (22 + strlen (principal));
-  if (prompt == NULL)
+  /* Now, we have the user's principal in principal.  Authenticate. */
+  krb5_get_init_creds_opt_init (&opts);
+  memset(&creds, 0, sizeof (creds));
+  status = krb5_get_init_creds_password (ctx, &creds, princ, NULL,
+               krb5_prompter_posix, NULL, 0, PRINCIPAL, &opts);
+  if (status != 0)
     {
-      fprintf (stderr, "Out of memory\n");
+      com_err (program, status, "while authenticating");
+      krb5_free_principal (ctx, princ);
       return -1;
     }
-  sprintf (prompt, "Enter password for %s: ", principal);
-  status = des_read_pw_string (pass, sizeof (pass), prompt, 0);
-  free (prompt);
-  if (status)
-    {
-      fprintf (stderr, "Error reading password.\n");
-      return -1;
-    }
+  krb5_free_principal (ctx, princ);
 
-  /* Now that we have the username and password, grab our special ticket. */
-  do_fini = 1;
-  status = sunetid_kadm_init (principal, pass, 12, 0);
-  memset (pass, '\0', sizeof (pass));
-
-  /* Make sure we succeeded. */
-  if (status == INTK_BADPW)
+  /* Put the new credentials into a memory cache. */
+  status = krb5_cc_resolve (ctx, CACHE_NAME, &ccache);
+  if (status != 0)
     {
-      fprintf (stderr, "Incorrect password.\n");
+      com_err (program, status, "while initializing memory cache");
       return -1;
     }
-  else if (status != KSUCCESS)
+  status = krb5_cc_store_cred (ctx, ccache, &creds);
+  if (status != 0)
     {
-      fprintf (stderr, "Kerberos error: %s\n", error_message (status));
+      com_err (program, status, "while storing credentials");
+      krb5_cc_destroy (ctx, ccache);
       return -1;
     }
-
-  /* Success. */
+  krb5_cc_close (ctx, ccache);
+  if (putenv ((char *) "KRB5CCNAME=" CACHE_NAME) != 0)
+    {
+      fprintf (stderr, "%s: putenv of KRB5CCNAME failed: %s\n", program,
+               strerror (errno));
+      return -1;
+    }
   return 0;
-}
-
-
-/* Log out and close our connection. */
-static void
-logout ()
-{
-  if (do_fini)
-    {
-      sunetid_kadm_fini ();
-      do_fini = 0;
-    }
 }
 
 
@@ -148,56 +129,108 @@ logout ()
 * Password changing
 ***************************************************************************/
 
-/* Actually change the password of a user.  We prompt for the new password
-   and then call sunetid_kadm_reset_passwd() to do the real work. */
+/* Prompt for a new password and write it into the given pointer.  Returns 0
+   on success, -1 on a retriable failure, and -2 on a permanent failure. */
 
 static int
-reset_passwd (char *principal)
+get_password (char **password)
 {
-  char pass[128];
-  int status;
-  char *return_status, *prompt;
+  krb5_prompt prompts[2];
+  krb5_context ctx;
+  krb5_error_code status;
 
-  /* Get the new password. */
-  prompt = (char *) malloc (20 + strlen (principal));
-  if (prompt == NULL)
+  /* Set up the prompt structure. */
+  prompts[0].prompt = (char *) "New password: ";
+  prompts[0].hidden = 1;
+  prompts[0].reply->data = malloc (1024);
+  if (prompts[0].reply->data == NULL)
     {
-      fprintf (stderr, "Out of memory\n");
-      return -1;
-    }
-  sprintf (prompt, "New password for %s: ", principal);
-  status = des_read_pw_string (pass, sizeof (pass), prompt, 1);
-  free (prompt);
-  if (status)
-    {
-      fprintf (stderr, "Error reading password.\n");
+      fprintf (stderr, "%s: cannot allocate memory: %s\n", program,
+               strerror (errno));
       return -2;
     }
-
-  /* Reset the password and log out. */
-  printf ("\n");
-  status = sunetid_kadm_reset_passwd (principal, pass, &return_status);
-  memset (pass, '\0', sizeof (pass));
-
-  /* Make sure we succeeded. */
-  if (status)
+  prompts[0].reply->length = 1024;
+  prompts[1].prompt = (char *) "Re-enter new password: ";
+  prompts[1].hidden = 1;
+  prompts[1].reply->data = malloc (1024);
+  if (prompts[0].reply->data == NULL)
     {
-      if (return_status)
-        {
-          fprintf (stderr, "%s error: %s\n", program, return_status);
-          free (return_status);
-        }
-      else
-        {
-          com_err (program, status, "");
-          if (status == KADM_UNAUTH || status == KADM_NOENTRY) return -2;
-        }
+      fprintf (stderr, "%s: cannot allocate memory: %s\n", program,
+               strerror (errno));
+      return -2;
+    }
+  prompts[1].reply->length = 1024;
+
+  /* Finally, we can do the actual prompt. */
+  status = krb5_init_context(&ctx);
+  if (status != 0)
+    {
+      com_err (program, status, "while initializing Kerberos");
+      return -2;
+    }
+  status = krb5_prompter_posix (ctx, NULL, NULL, NULL, 2, prompts);
+  if (status != 0)
+    {
+      com_err (program, status, "while prompting for a password");
+      return -2;
+    }
+  if (strcmp (prompts[0].reply->data, prompts[1].reply->data) != 0)
+    {
+      printf ("The passwords don't match\n");
       return -1;
+    }
+  *password = prompts[0].reply->data;
+  free (prompts[1].reply->data);
+  return 0;
+}
+
+
+/* Actually change the password of a user.  We prompt for the new password
+   and then call remctl to do the real work. */
+
+static int
+reset_password (char *principal)
+{
+  int status;
+  char *password;
+  struct remctl_result *result;
+  const char *command[4];
+
+  /* Get the new password. */
+  do
+    {
+      status = get_password (&password);
+      printf ("\n");
+    }
+  while (status == -1);
+  if (status == -2)
+    return -1;
+
+  /* Reset the password. */
+  command[0] = "password";
+  command[1] = "reset";
+  command[2] = password;
+  command[3] = NULL;
+  result = remctl (HOST, PORT, PRINCIPAL, command);
+  if (result->error != NULL)
+    {
+      fprintf (stderr, "%s", result->error);
+      remctl_result_free (result);
+      return -2;
     }
   else
     {
-      printf ("Password for %s successfully changed.\n", principal);
-      return 0;
+      if (result->stderr_len > 0)
+        fwrite (result->stderr_buf, result->stderr_len, 1, stderr);
+      if (result->stdout_len > 0)
+        fwrite (result->stdout_buf, result->stdout_len, 1, stdout);
+      if (result->status == 0)
+        {
+          printf ("Password for %s successfully changed\n", principal);
+          return 0;
+        }
+      else
+        return -1;
     }
 }
 
@@ -223,7 +256,8 @@ find_name (char *username)
   search = (char *) malloc (strlen (username) + 2);
   if (search == NULL)
     {
-      fprintf (stderr, "Out of memory\n");
+      fprintf (stderr, "%s: cannot allocate memory: %s\n", program,
+               strerror (errno));
       return NULL;
     }
   strcpy (search, username);
@@ -233,7 +267,8 @@ find_name (char *username)
   passwd = fopen (PASSWD_FILE, "r");
   if (passwd == NULL)
     {
-      fprintf (stderr, "Unable to open site password file.\n");
+      fprintf (stderr, "%s: unable to open site password file: %s\n",
+               program, strerror (errno));
       free (search);
       return NULL;
     }
@@ -255,7 +290,8 @@ find_name (char *username)
           name = (char *) malloc (strlen (start) + 1);
           if (name == NULL)
             {
-              fprintf (stderr, "Out of memory\n");
+              fprintf (stderr, "%s: cannot allocate memory: %s\n", program,
+                       strerror (errno));
               free (search);
               return NULL;
             }
@@ -275,7 +311,7 @@ find_name (char *username)
 int
 main (int argc, char **argv)
 {
-  char principal[ANAME_SZ], answer[64];
+  char principal[BUFSIZ], answer[BUFSIZ];
   int status, tries;
   char *name;
 
@@ -298,16 +334,6 @@ main (int argc, char **argv)
       exit (0);
     }
   
-  /* Initialize the error tables. */
-  initialize_krb_error_table ();
-  initialize_kadm_error_table ();
-
-  /* Set up our signal handlers for a clean exit. */
-  signal (SIGINT, cleanup);
-  signal (SIGTERM, cleanup);
-  signal (SIGHUP, cleanup);
-  signal (SIGQUIT, cleanup);
-
   /* Authenticate to kadmind. */
   printf ("Authenticating to Kerberos....\n");
   if (login ()) exit (1);
@@ -325,7 +351,8 @@ main (int argc, char **argv)
         principal[strlen (principal) - 1] = '\0';
       else
         {
-          fprintf (stderr, "Error reading username.\n");
+          fprintf (stderr, "%s: error reading username: %s\n", program,
+                   strerror (errno));
           exit (1);
         }
     }
@@ -359,12 +386,11 @@ main (int argc, char **argv)
   /* Change the password.  Loop up to five times in the case of an error. */
   for (tries = 0; tries < 5; tries++)
     {
-      status = reset_passwd (principal);
-      if (!status || status == -2 || !do_fini)
+      status = reset_password (principal);
+      if (!status || status == -2)
         break;
       else
         printf ("\n");
     }
-  logout ();
   exit (status ? 1 : 0);
 }
