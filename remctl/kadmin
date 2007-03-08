@@ -1,0 +1,29 @@
+# /etc/remctl/conf.d/kadmin -- kadmin remctl services.  -*- sh -*-
+# $Id$
+#
+# The ACL files used are specific to Stanford and will probably need changes
+# for other sites (if this whole thing is ever useful for other sites).
+#
+# When modifying this file, keep the list of ACL files (or ANYUSER) on the
+# second line of each listing for easy analysis.
+
+kadmin change_passwd /usr/sbin/kadmin-backend logmask=3,4 \
+    ANYUSER
+kadmin check_passwd  /usr/sbin/kadmin-backend logmask=3 \
+    /etc/remctl/acl/kadmin-examine /etc/remctl/acl/operations
+kadmin create        /usr/sbin/kadmin-backend logmask=3 \
+    /etc/remctl/acl/kadmin-create
+kadmin delete        /usr/sbin/kadmin-backend \
+    /etc/remctl/acl/kadmin-delete
+kadmin disable       /usr/sbin/kadmin-backend \
+    /etc/remctl/acl/kadmin-enable
+kadmin enable        /usr/sbin/kadmin-backend \
+    /etc/remctl/acl/kadmin-enable
+kadmin examine       /usr/sbin/kadmin-backend \
+    /etc/remctl/acl/kadmin-examine /etc/remctl/acl/operations \
+    /etc/remctl/acl/security /etc/remctl/acl/data-admin \
+    /etc/remctl/acl/data-view 
+kadmin help          /usr/sbin/kadmin-backend \
+    ANYUSER
+kadmin reset_passwd  /usr/sbin/kadmin-backend logmask=3 \
+    /etc/remctl/acl/kadmin-create
