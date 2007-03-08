@@ -1,0 +1,5 @@
+remctl/kadmin                   etc/remctl/conf.d/kadmin
+remctl/password                 etc/remctl/reset/remctl.conf
+debian/password-reset.run       service/password-reset/run
+kadmin-backend                  usr/sbin
+kadmin-backend.8                usr/share/man/man8

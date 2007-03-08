@@ -1,0 +1,29 @@
+Source: kadmin-remctl
+Section: net
+Priority: extra
+Maintainer: Russ Allbery <rra@debian.org>
+Build-Depends: debhelper (>= 4), perl, libremctl-dev, libkrb5-dev, comerr-dev
+Standards-Version: 3.7.2
+
+Package: kadmin-remctl
+Architecture: any
+Depends: remctl-server, kasetkey, krb5-user, libexpect-perl
+Recommends: daemontools
+Description: remctl backend providing kadmin functions
+ This package provides a remctl backend and configuration for doing kadmin
+ functions via remctl.  It includes setup and configuration for a separate
+ instance of remctld used to support Help Desk password changes that
+ requires reauthentication before the password change.
+ .
+ This package is Stanford-specific in its defaults and configuration
+ expectations.
+
+Package: password-change
+Architecture: all
+Depends: ${shlibs:Depends}
+Description: Client for Help Desk password changes
+ Provides a command-line client for changing a user's password with
+ prompts an authorized user to authenticate, verifies the user's identity
+ in the Stanford user database, and then changes the user's password.
+ .
+ This package is specific to Stanford.
