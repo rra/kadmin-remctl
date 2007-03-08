@@ -1,0 +1,29 @@
+=head1 NAME
+
+passwd_change - Change a user's Kerberos password
+
+=head1 SYNOPSIS
+
+B<passwd_change> I<user>
+
+=head1 DESCRIPTION
+
+B<passwd_change> changes the password for I<user>, who may be someone
+other than the person running the program.  It may only be run by
+authorized users (normally Help Desk personnel); all others will receive
+an error message.  The person running the program must have a valid ticket
+cache when running it and will be asked to reauthenticate as a security
+precaution.  Then, I<user> will be checked against Stanford's user
+database and the user's full name will be displayed for verification if
+found.  When changing the password for a base-level account, the user will
+not be found but one can elect to continue anyway.  Finally, the user is
+prompted for the new password (twice).
+
+This program uses the remctl protocol to talk to a central server to do
+the password change.
+
+=head1 AUTHOR
+
+Russ Allbery <rra@stanford.edu>
+
+=cut
