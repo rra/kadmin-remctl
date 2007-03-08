@@ -441,7 +441,7 @@ if ($cmd eq 'change_passwd') {
 
     print $HELP;
 
-} elsif ($cmd eq 'reset_passwd') {
+} elsif ($cmd eq 'reset_passwd' or $cmd eq 'reset') {
 
     my $princ = shift or die "error: missing principal\n";
     my $pass  = shift or die "error: missing password\n";
@@ -472,7 +472,7 @@ B<kadmin-backend> create I<user> I<password> (enabled | disabled)
 
 B<kadmin-backend> (delete | disable | enable | examine) I<user>
 
-B<kadmin-backend> reset_passwd I<user> I<password>
+B<kadmin-backend> (reset_passwd | reset) I<user> I<password>
 
 =head1 DESCRIPTION
 
@@ -528,7 +528,9 @@ arguments.
 
 The C<reset_passwd> function changes the password for a given principal
 without requiring knowledge of the old password.  Changing the password of a
-user who can themselves reset passwords is not permitted.
+user who can themselves reset passwords is not permitted.  C<reset> is
+supported as a synonym (used primarily with a separate password reset
+service).
 
 This script is normally run via B<remctld> with different ACLs on each
 supported function.  C<reset_passwd> is a special case and should normally
