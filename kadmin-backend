@@ -156,8 +156,9 @@ sub validate_password {
     my ($num, $error, $match, $before, $after)
         = $k5admin->expect (2, 'change_password: ', 'kadmin: ');
     if ($num == 1) {
-        $after =~ s/ while changing.*//;
-        print "retstr: $after\n";
+        $after =~ s/ while changing.*//s;
+        warn "error: Insecure password rejected\n";
+        print "retstr: Insecure password: $after\n";
         $k5admin->send ("quit\n");
         $k5admin->soft_close;
     } elsif ($error) {
