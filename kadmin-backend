@@ -74,7 +74,7 @@ EOH
 # "admin".
 sub check_principal {
     my ($principal) = @_;
-    if ($principal !~ /^[a-z0-9][a-z]{2,7}\z/ || $principal eq 'admin') {
+    if ($principal !~ /^[a-z][0-9a-z]{2,7}\z/ || $principal eq 'admin') {
         die "error: invalid principal: $principal\n";
     }
 }
@@ -366,7 +366,7 @@ sub enable_principal {
 # format and will be converted to K4.
 sub examine_principal {
     my ($principal) = @_;
-    unless ($principal =~ m%[a-zA-Z0-9]+(/[a-zA-Z0-9._-]+)\z%) {
+    unless ($principal =~ m%^[a-zA-Z0-9]+(/[a-zA-Z0-9._-]+)?\z%) {
         die "error: invalid character in principal name\n";
     }
     my $k4principal = $principal;
