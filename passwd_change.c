@@ -197,7 +197,7 @@ get_password (char **password)
   if (status != 0)
     {
       com_err (program, status, "while prompting for a password");
-      return (status == KRB5_LIBOS_PWDINTR) ? -1 : -2;
+      return -2;
     }
   if (strcmp (prompts[0].reply->data, prompts[1].reply->data) != 0)
     {
