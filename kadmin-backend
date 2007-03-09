@@ -229,21 +229,27 @@ sub change_password {
     unless ($kpasswd) {
         die "error: cannot run $K5_KPASSWD\n";
     }
-    unless ($kpasswd->expect (2, '-re', 'Password for \S+: ')) {
+    unless ($kpasswd->expect (2, 'Password for')) {
         die "error: cannot talk to $K5_KPASSWD\n";
     }
-    $kpasswd->send ($old);
-    unless ($kpasswd->expect (2, 'Enter new password: ')) {
-        die "error: cannot talk to $K5_KPASSWD\n";
+    $kpasswd->send ($old . "\n");
+    my ($num, $error, $match, $before, $after)
+        = $kpasswd->expect (2, 'kpasswd: ', 'Enter new password: ');
+    if ($num == 1) {
+        $after =~ s/\n.*//;
+        print "retstr: $after\n";
+        die "error: $after\n";
+    } elsif ($error) {
+        die "error: Expect said $error\n";
     }
-    $kpasswd->send ($new);
+    $kpasswd->send ($new . "\n");
     unless ($kpasswd->expect (2, 'Enter it again: ')) {
         die "error: cannot talk to $K5_KPASSWD\n";
     }
-    $kpasswd->send ($new);
-    my ($num, $error, $match, $before, $after)
-        = kpasswd->expect (2, 'Password change rejected: ',
-                           'Password changed.');
+    $kpasswd->send ($new . "\n");
+    ($num, $error, $match, $before, $after)
+        = $kpasswd->expect (2, 'Password change rejected: ',
+                            'Password changed.');
     if ($num == 1) {
         print "retstr: $after\n";
         die "error: $after\n";
@@ -321,7 +327,7 @@ sub delete_principal {
     check_principal ($principal);
     system ($KASETKEY, '-k', $K4_KEY, '-a', $K4_ADMIN, '-D', $principal) == 0
         or die "error: cannot delete $principal in Kerberos v4\n";
-    my ($status, $output) = run_k5admin ("delete $principal");
+    my ($status, $output) = run_k5admin ("delete_principal -force $principal");
     if ($status != 0) {
         $output =~ s/^delete_principal: //;
         $output =~ s/\n.*//;
