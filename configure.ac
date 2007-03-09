@@ -13,6 +13,9 @@ AC_CONFIG_AUX_DIR([tools])
 AM_INIT_AUTOMAKE
 AM_MAINTAINER_MODE
 
+AC_PROG_CC
+AC_PROG_INSTALL
+
 AC_ARG_WITH([remctl],
     AC_HELP_STRING([--with-remctl=DIR],
         [Prefix for remctl headers and libraries]),
