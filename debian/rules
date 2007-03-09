@@ -19,8 +19,6 @@ else
     CFLAGS += -O2
 endif
 
-kadmin-backend.8:
-
 build: build-arch build-indep
 build-arch: build-arch-stamp
 build-indep: build-indep-stamp
@@ -32,8 +30,6 @@ build-arch-stamp:
 
 build-indep-stamp:
 	chmod 755 debian/password-reset.run
-	pod2man --release=$(VERSION) --center="Consultant Commands" \
-	    --section=8 kadmin-backend > kadmin-backend.8
 	touch build-indep-stamp
 
 clean:
@@ -41,7 +37,7 @@ clean:
 	dh_testroot
 	rm -f build-arch-stamp build-indep-stamp
 	$(MAKE) clean
-	dh_clean kadmin-backend.8
+	dh_clean
 
 install:
 	dh_testdir
