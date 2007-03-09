@@ -252,7 +252,7 @@ reset_password (char *principal)
         fwrite (result->stderr_buf, result->stderr_len, 1, stderr);
       if (result->stdout_len > 0)
         fwrite (result->stdout_buf, result->stdout_len, 1, stdout);
-      if (result->status == 0)
+      if (result->status == 0 && result->stdout_len == 0)
         {
           printf ("Password for %s successfully changed\n", principal);
           return 0;
