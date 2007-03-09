@@ -5,7 +5,7 @@
 # Copyright 2007 Board of Trustees, Leland Stanford Jr. University
 # See README for licensing terms.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
+AUTOMAKE_OPTIONS = foreign
 EXTRA_DIST = docs/design kadmin-backend.8 passwd_change.1 passwd_change.pod \
 	remctl/kadmin remctl/password
 
