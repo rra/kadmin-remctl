@@ -6,7 +6,8 @@
 # See README for licensing terms.
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
-EXTRA_DIST = docs/design remctl/kadmin remctl/password
+EXTRA_DIST = docs/design kadmin-backend.8 passwd_change.1 passwd_change.pod \
+	remctl/kadmin remctl/password
 
 bin_PROGRAMS = passwd_change
 passwd_change_LDADD = -lremctl
