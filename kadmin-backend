@@ -112,12 +112,13 @@ sub run_k5admin {
         exec ($K5_KADMIN, @args)
             or die "error: cannot run $K5_KADMIN\n";
     }
-    my @output = <K5ADMIN>;
+    local $_;
+    my @output;
+    while (<K5ADMIN>) {
+        push (@output, $_) unless /Authenticating as principal/;
+    }
     close K5ADMIN;
     my $status = ($? >> 8);
-    if ($output[0] =~ /Authenticating as principal/) {
-        shift @output;
-    }
     return wantarray ? ($status, join ('', @output)) : $status;
 }
 
