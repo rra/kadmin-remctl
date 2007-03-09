@@ -198,7 +198,9 @@ get_password (char **password)
       return -1;
     }
   *password = prompts[0].reply->data;
+  free (prompts[0].reply);
   free (prompts[1].reply->data);
+  free (prompts[1].reply);
   return 0;
 }
 
