@@ -153,7 +153,7 @@ get_password (char **password)
   /* Set up the prompt structure. */
   prompts[0].prompt = (char *) "New password";
   prompts[0].hidden = 1;
-  prompts[0].reply = malloc (sizeof (prompts[0].reply));
+  prompts[0].reply = calloc (1, sizeof (*prompts[0].reply));
   if (prompts[0].reply == NULL)
     {
       fprintf (stderr, "%s: cannot allocate memory: %s\n", program,
@@ -170,7 +170,7 @@ get_password (char **password)
   prompts[0].reply->length = 1024;
   prompts[1].prompt = (char *) "Re-enter new password";
   prompts[1].hidden = 1;
-  prompts[1].reply = malloc (sizeof (prompts[0].reply));
+  prompts[1].reply = calloc (1, sizeof (*prompts[0].reply));
   if (prompts[1].reply == NULL)
     {
       fprintf (stderr, "%s: cannot allocate memory: %s\n", program,
