@@ -102,13 +102,13 @@ login (void)
       krb5_free_principal (ctx, princ);
       return -1;
     }
-  krb5_free_principal (ctx, princ);
 
   /* Put the new credentials into a memory cache. */
   status = krb5_cc_resolve (ctx, CACHE_NAME, &ccache);
   if (status != 0)
     {
       com_err (program, status, "while resolving memory cache");
+      krb5_free_principal (ctx, princ);
       return -1;
     }
   status = krb5_cc_initialize (ctx, ccache, princ);
@@ -117,6 +117,7 @@ login (void)
       com_err (program, status, "while initializing memory cache");
       return -1;
     }
+  krb5_free_principal (ctx, princ);
   status = krb5_cc_store_cred (ctx, ccache, &creds);
   if (status != 0)
     {
