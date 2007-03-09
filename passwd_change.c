@@ -221,7 +221,7 @@ reset_password (char *principal)
   int status;
   char *password;
   struct remctl_result *result;
-  const char *command[4];
+  const char *command[5];
 
   /* Get the new password. */
   do
@@ -236,8 +236,9 @@ reset_password (char *principal)
   /* Reset the password. */
   command[0] = "password";
   command[1] = "reset";
-  command[2] = password;
-  command[3] = NULL;
+  command[2] = principal;
+  command[3] = password;
+  command[4] = NULL;
   result = remctl (HOST, PORT, PRINCIPAL, command);
   if (result->error != NULL)
     {
