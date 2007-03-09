@@ -74,7 +74,7 @@ EOH
 # "admin".
 sub check_principal {
     my ($principal) = @_;
-    if ($principal !~ /^[a-z][0-9][a-z]{2,7}\z/ || $principal eq 'admin') {
+    if ($principal !~ /^[a-z0-9][a-z]{2,7}\z/ || $principal eq 'admin') {
         die "error: invalid principal: $principal\n";
     }
 }
