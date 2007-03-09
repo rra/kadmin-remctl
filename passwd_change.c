@@ -144,8 +144,15 @@ get_password (char **password)
   krb5_error_code status;
 
   /* Set up the prompt structure. */
-  prompts[0].prompt = (char *) "New password: ";
+  prompts[0].prompt = (char *) "New password";
   prompts[0].hidden = 1;
+  prompts[0].reply = malloc (sizeof (prompts[0].reply));
+  if (prompts[0].reply == NULL)
+    {
+      fprintf (stderr, "%s: cannot allocate memory: %s\n", program,
+               strerror (errno));
+      return -2;
+    }
   prompts[0].reply->data = malloc (1024);
   if (prompts[0].reply->data == NULL)
     {
@@ -154,8 +161,15 @@ get_password (char **password)
       return -2;
     }
   prompts[0].reply->length = 1024;
-  prompts[1].prompt = (char *) "Re-enter new password: ";
+  prompts[1].prompt = (char *) "Re-enter new password";
   prompts[1].hidden = 1;
+  prompts[1].reply = malloc (sizeof (prompts[0].reply));
+  if (prompts[1].reply == NULL)
+    {
+      fprintf (stderr, "%s: cannot allocate memory: %s\n", program,
+               strerror (errno));
+      return -2;
+    }
   prompts[1].reply->data = malloc (1024);
   if (prompts[0].reply->data == NULL)
     {
