@@ -52,6 +52,7 @@ install:
 	dh_testroot
 	dh_clean -k
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	dh_install --fail-missing
 
 binary: binary-arch binary-indep
 
