@@ -119,7 +119,7 @@ AC_CHECK_DECLS([GSS_KRB5_MECHANISM], , ,
 dnl Additional checks for portability between MIT and Heimdal if krb5
 dnl libraries were requested.
 AC_DEFUN([_RRA_LIB_KRB5_KRB5_EXTRA],
-[AC_CHECK_HEADERS([et/com_err.h])]
+[AC_CHECK_HEADERS([et/com_err.h])])
 
 dnl Additional checks for portability if krb4 libraries were requested.
 AC_DEFUN([_RRA_LIB_KRB5_KRB4_EXTRA],
