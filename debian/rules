@@ -66,7 +66,7 @@ install:
 binary: binary-arch binary-indep
 
 binary-indep: DH_OPTIONS=-i
-binary-indep:
+binary-indep: install
 	dh_testdir
 	dh_testroot
 	dh_installchangelogs
