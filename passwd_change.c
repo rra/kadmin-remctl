@@ -39,7 +39,7 @@
 #define PORT 4443
 
 /* The memory cache used for the password change authentication. */
-#define CACHE_NAME "FILE:/tmp/security-hole"
+#define CACHE_NAME "MEMORY:passwd_change"
 
 /* Local functions. */
 static char *find_name (char *username);
