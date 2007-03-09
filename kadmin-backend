@@ -164,6 +164,7 @@ sub validate_password {
     } elsif ($error) {
         die "error: Expect said $error\n";
     } else {
+        $k5admin->send ("change_password -randkey $STRENGTH\n");
         $k5admin->send ("quit\n");
         $k5admin->soft_close;
     }
