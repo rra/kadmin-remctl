@@ -19,6 +19,6 @@ $(srcdir)/passwd_change.1: $(srcdir)/passwd_change.pod
 	pod2man --release=$(VERSION) --center="User Commands" \
 	    $(srcdir)/passwd_change.pod > $@
 
-$(srcdir)/kadmin-backend.8: $(srcdir)/kadmin-backend.pod
+$(srcdir)/kadmin-backend.8: $(srcdir)/kadmin-backend
 	pod2man --release=$(VERSION) --center="Administrative Commands" \
 	    --section=8 $(srcdir)/kadmin-backend > $@
