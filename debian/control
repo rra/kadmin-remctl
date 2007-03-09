@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 4), perl, libremctl-dev, libkrb5-dev, comerr-dev
 Standards-Version: 3.7.2
 
 Package: kadmin-remctl
-Architecture: any
+Architecture: all
 Depends: remctl-server, kasetkey, krb5-user, libexpect-perl
 Recommends: daemontools
 Description: remctl backend providing kadmin functions
@@ -19,7 +19,7 @@ Description: remctl backend providing kadmin functions
  expectations.
 
 Package: password-change
-Architecture: all
+Architecture: any
 Depends: ${shlibs:Depends}
 Description: Client for Help Desk password changes
  Provides a command-line client for changing a user's password with
