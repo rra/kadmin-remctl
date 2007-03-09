@@ -20,7 +20,11 @@
 #include <stdlib.h>             /* exit(), malloc(), free() */
 #include <string.h>             /* strncpy(), memset(), strerror() */
 
-#include <com_err.h>            /* Kerberos error reporting */
+#ifdef HAVE_ET_COM_ERR_H
+# include <et/com_err.h>
+#else
+# include <com_err.h>           /* Kerberos error reporting */
+#endif
 #include <krb5.h>               /* General Kerberos interface */
 #include <remctl.h>             /* remctl client library */
 
