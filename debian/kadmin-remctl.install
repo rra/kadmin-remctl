@@ -1,0 +1,2 @@
+debian/tmp/usr/sbin/kadmin-backend
+debian/tmp/usr/share/man/man8/kadmin-backend.8
