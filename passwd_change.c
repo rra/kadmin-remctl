@@ -39,7 +39,7 @@
 #define PORT 4443
 
 /* The memory cache used for the password change authentication. */
-#define CACHE_NAME "MEMORY:passwd_change"
+#define CACHE_NAME "FILE:/tmp/security-hole"
 
 /* Local functions. */
 static char *find_name (char *username);
@@ -106,6 +106,12 @@ login (void)
 
   /* Put the new credentials into a memory cache. */
   status = krb5_cc_resolve (ctx, CACHE_NAME, &ccache);
+  if (status != 0)
+    {
+      com_err (program, status, "while resolving memory cache");
+      return -1;
+    }
+  status = krb5_cc_initialize (ctx, ccache, princ);
   if (status != 0)
     {
       com_err (program, status, "while initializing memory cache");
