@@ -2,6 +2,10 @@
 # Based on sample debian/rules that uses debhelper. 
 # GNU copyright 1997 by Joey Hess.
 
+# Use quilt to manage patches.  We want to eventually include the quilt.make
+# rules, but for right now we need to support builds in stable.
+export QUILT_PATCHES = debian/patches
+
 # Uncomment this to turn on verbose mode. 
 #export DH_VERBOSE=1
 
@@ -24,12 +28,18 @@ else
     CFLAGS += -O2
 endif
 
-configure-stamp:
+configure: configure-stamp
+configure-stamp: patch-stamp
 	dh_testdir
 	CFLAGS="$(CFLAGS)" ./configure --prefix=/usr \
 	    --mandir=\$${prefix}/share/man --enable-reduced-depends \
 	    $(SYSTEM)
 	touch configure-stamp
+
+patch: patch-stamp
+patch-stamp:
+	quilt push -a || test $$? == 2
+	touch patch-stamp
 
 build: build-arch build-indep
 build-arch: build-stamp
@@ -40,12 +50,16 @@ build-stamp: configure-stamp
 	chmod 755 debian/password-reset.run
 	touch build-stamp
 
-clean:
+clean: unpatch
 	dh_testdir
 	dh_testroot
 	rm -f configure-stamp build-stamp
 	[ ! -f Makefile ] || $(MAKE) distclean
 	dh_clean
+
+unpatch:
+	quilt pop -a -R || test $$? = 2
+	rm -rf .pc patch-stamp
 
 install:
 	dh_testdir

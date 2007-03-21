@@ -1,0 +1,62 @@
+Point everything at the right paths for the test realm for right now.
+At some point, we need a better way of dealing with test vs. production
+realms.
+
+Index: kadmin-remctl/kadmin-backend
+===================================================================
+--- kadmin-remctl.orig/kadmin-backend	2007-03-21 16:15:46.000000000 -0700
++++ kadmin-remctl/kadmin-backend	2007-03-21 16:17:35.000000000 -0700
+@@ -33,26 +33,26 @@ use Expect ();
+ $Expect::Log_Stdout = 0;
+ 
+ # K4 OPTIONS
+-our $K4_KADMIN = '/usr/local/sbin/kadmin';
+-our $K4_PRINC  = 'service.lsdb';
+-our $K4_SRVTAB = '/etc/leland/srvtab.lsdb';
+-our $K4_ADMIN  = 'admin';
+-our $K4_KEY    = '/db/srvtab/keys/admin';
++our $K4_KADMIN = '/usr/local/sbin/kadmin4';
++our $K4_PRINC  = 'service.k4k5';
++our $K4_SRVTAB = '/etc/krb5kdc/afs-srvtab';
++our $K4_ADMIN  = 'service.k4k5';
++our $K4_KEY    = '/etc/krb5kdc/afs-srvtab';
+ 
+ # K5 OPTIONS
+-our $K5_KADMIN  = '/usr/local/sbin/k5admin';
+-our $K5_KPASSWD = '/usr/local/bin/kpasswd';
++our $K5_KADMIN  = '/usr/sbin/kadmin';
++our $K5_KPASSWD = '/usr/bin/kpasswd';
+ our $K5_PRINC   = 'service/lsdb';
+-our $K5_KEYTAB  = '/etc/leland/keytab.lsdb';
++our $K5_KEYTAB  = '/etc/krb5kdc/keytab.lsdb';
+ 
+ # Account used to test password strength.
+ our $STRENGTH   = 'service/password-strength';
+ 
+ # Path to kasetkey, used to create Kerberos v4 principals in an AFS kaserver.
+-our $KASETKEY   = '/usr/local/bin/gen_srvtab';
++our $KASETKEY   = '/usr/sbin/kasetkey';
+ 
+ # Path to the ACL file of who can change passwords.
+-our $RESET_ACL  = '/etc/leland/remctl/kadmin-reset.acl';
++our $RESET_ACL  = '/etc/remctl/acl/password-reset';
+ 
+ # The help text.
+ our $HELP = <<'EOH';
+Index: kadmin-remctl/passwd_change.c
+===================================================================
+--- kadmin-remctl.orig/passwd_change.c	2007-03-21 16:15:49.000000000 -0700
++++ kadmin-remctl/passwd_change.c	2007-03-21 16:16:04.000000000 -0700
+@@ -28,10 +28,10 @@
+ #define PASSWD_FILE "/afs/ir/service/etc/passwd.all"
+ 
+ /* The principal name used for password changing. */
+-#define PRINCIPAL "service/password-change@stanford.edu"
++#define PRINCIPAL "service/password-change@test-k5.stanford.edu"
+ 
+ /* The host and port to which the remctl connection should be made. */
+-#define HOST "lsdb.stanford.edu"
++#define HOST "kerberos-dev.stanford.edu"
+ #define PORT 4443
+ 
+ /* The memory cache used for the password change authentication. */
