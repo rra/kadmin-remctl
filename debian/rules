@@ -67,9 +67,9 @@ install:
 	dh_clean -k
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	dh_install -a -i --fail-missing
-	install -d $(CURDIR)/debian/tmp/kadmin-remctl/etc/remctl/conf.d
-	install -d $(CURDIR)/debian/tmp/kadmin-remctl/etc/remctl/reset
-	install -d $(CURDIR)/debian/tmp/kadmin-remctl/service/password-reset
+	install -d $(CURDIR)/debian/kadmin-remctl/etc/remctl/conf.d
+	install -d $(CURDIR)/debian/kadmin-remctl/etc/remctl/reset
+	install -d $(CURDIR)/debian/kadmin-remctl/service/password-reset
 	install -m 644 remctl/kadmin \
 	    $(CURDIR)/debian/kadmin-remctl/etc/remctl/conf.d/kadmin
 	install -m 644 remctl/password \
