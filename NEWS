@@ -1,0 +1,7 @@
+                    User-Visible kadmin-remctl Changes
+
+kadmin-remctl 1.0 (2007-03-21)
+
+    First public release.  Many defaults are hard-coded into source code
+    and synchronization with an AFS kaserver realm is done using
+    Stanford-specific external programs.

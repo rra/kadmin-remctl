@@ -1,0 +1,182 @@
+                            kadmin-remctl 1.0
+             (remctl interface for Kerberos kadmin functions)
+
+                Written by Russ Allbery <rra@stanford.edu>
+
+  Copyright 1997, 2003, 2007 Board of Trustees, Leland Stanford Jr.
+  University.  This software is distributed under a BSD-style license.
+  Please see the section LICENSE below for more information.
+
+BLURB
+
+  kadmin-remctl provides a remctl backend that implements basic Kerberos
+  account administration functions (create, delete, enable, disable, reset
+  password, examine) plus user password changes and a call to
+  strength-check a given password.  These functions also synchronize
+  changes with an AFS kaserver where appropriate.  Also included is a
+  client for privileged users to use for password resets.  Many of the
+  defaults and namespace checks are Stanford-specific, but it can be
+  modified for other sites.
+
+DESCRIPTION
+
+  At Stanford, we are currently running three Kerberos realms: an MIT
+  Kerberos v5 realm, an Active Directory realm, and an AFS kaserver
+  Kerberos v4 realm.  We also have middleware and web applications that
+  support changing or resetting passwords, creating new accounts,
+  examining principals, and enabling or disabling accounts based on
+  affiliation changes.  Rather than give all of these systems kadmin
+  access (and force them to use kadmin clients, which is difficult since
+  many are written in Java), and rather than forcing them to do realm
+  synchronization themselves, we export an interface via remctl and use
+  the Java remctl client to talk to that interface.
+
+  This package includes the kadmin backend, a Perl script that supports
+  creating, deleting, enabling, and disabling accounts, changing or
+  resetting passwords, and checking password strength.  This script does
+  synchronization in an AFS kaserver Kerberos v4 realm as well where
+  appropriate.
+
+  Also included in this package is a C client for use by privileged users
+  when changing passwords for others.  This client searches for the user
+  in a password file first to present the full name for verification, and
+  then obtains special credentials for a designated principal and then
+  contacts a remctl server on a non-standard port to issue a change
+  password command.  This is done on a non-standard port so that it can
+  use a different principal for authentication than the regular host
+  principal normally used by remctl and require that the privileged user
+  reauthenticate before using this service.
+
+  Many aspects of this package are very Stanford-specific, including the
+  restrictions on valid principal names, default principal names and
+  paths, the AFS kaserver linkage (which uses a Stanford-specific Kerberos
+  v4 kadmin client), and the formatting of the output (which is for
+  compatibility with the legacy APIs used at Stanford).  It is not
+  suitable for using at other sites without modifications, but may provide
+  ideas for how to do something similar for another site.
+
+  For more information, see docs/design in the source distribution.
+
+REQUIREMENTS
+
+  The kadmin backend is written in Perl and requires the Perl Expect
+  module.  It calls the Kerberos v5 kadmin and kpasswd programs and
+  therefore requires that they be available.  For integration with the AFS
+  kaserver Kerberos v4 realm, it also requires kasetkey and a Kerberos v4
+  kadmin client available.  (The Kerberos v4 kadmin client is an
+  unreleased internal Stanford client, so this part of the code would need
+  to be modified at other sites.)
+
+  The passwd_change C client requires the C libremctl library be available
+  to build (plus, obviously, a C compiler).  It also requires a Kerberos
+  library; either MIT Kerberos or Heimdal should be sufficiant (although
+  currently the client will produce much better error messages using MIT
+  Kerberos).
+
+  Finally, the backend is intended to be run under remctld and use remctl
+  to handle authentication, privacy, and integrity.
+
+  remctl is available from:
+
+      <http://www.eyrie.org/~eagle/software/remctl/>
+
+  kasetkey is available as part of the wallet distribution at:
+
+      <http://www.eyrie.org/~eagle/software/wallet/>
+
+INSTALLATION
+
+  This software should not be deployed as-is at any site other than
+  Stanford.  It needs to be reviewed and modified for changing local
+  assumptions, paths, and integration requirements.
+
+  That being said, there are two components: the remctl backend and
+  remctld configuration for the interface, and the passwd_change client
+  program.  The remctl backend script is a Perl script and doesn't require
+  compilation, only changes to the paths at the start of the script.
+  remctl configuration fragments suitable for being included in your
+  remctld configuration are in the remctl subdirectory.  The kadmin
+  fragment provides the general interface.
+
+  To set up the server for the passwd_change client, create a special
+  designated principal in your Kerberos database, set the
+  DISALLOW_TGT_BASED flag on that principal to require manual
+  authentication, and set the lifetime of that principal to one hour.
+  Then, create a keytab for that principal on the host running the special
+  server and set up a separate instance of remctld running on a different
+  port that includes the remctl/password configuration fragment.  That
+  instance of remctl should be run with the KRB5_KTNAME environment
+  variable set, pointing it at the keytab for this designated principal.
+
+  To build the passwd_change client, modify the settings at the top of the
+  passwd_change.c code to point it to the correct server and port and to
+  use the correct designated principal for the password changing service.
+  Then, run:
+
+      ./configure
+      make
+      make install
+
+  The last step will probably have to be done as root and will install
+  both the client and the kadmin-backend script.  You may need to change
+  the path to Perl on the first line of kadmin-backend (as well as the
+  other defaults in it).  By default, kadmin-remctl installs itself under
+  /usr/local; you can change that path by passing the --prefix=PATH
+  argument to configure.
+
+  If the remctl libraries aren't installed in a directory searched by the
+  compiler, use --with-remctl to specify the root directory (prefix) under
+  which remctl was installed.
+
+  Normally, configure will use krb5-config to determine the flags to use
+  to compile with your Kerberos libraries.  If krb5-config isn't found, it
+  will look for the standard Kerberos libraries in locations already
+  searched by your compiler.  If the the krb5-config script first in your
+  path is not the one corresponding to the Kerberos libraries you want to
+  use or if your Kerberos libraries and includes aren't in a location
+  searched by default by your compiler, you need to specify
+  --with-kerberos=PATH:
+
+      ./configure --with-kerberos=/usr/pubsw
+
+  To specify a particular krb5-config script to use, either set the
+  KRB5_CONFIG environment variable or pass it to configure like:
+
+      ./configure KRB5_CONFIG=/path/to/krb5-config
+
+  You can build kadmin-remctl in a different directory from the source if
+  you wish.  To do this, create a new empty directory, cd to that
+  directory, and then give the path to configure when running configure.
+  Everything else should work as above.
+
+  You can pass the --enable-reduced-depends flag to configure to try to
+  minimize the shared library dependencies encoded in the binaries.  This
+  omits from the link line all the libraries included solely because the
+  Kerberos libraries depend on them and instead links the programs only
+  against libraries whose APIs are called directly.  This will only work
+  with shared Kerberos libraries and will only work on platforms where
+  shared libraries properly encode their own dependencies (such as Linux).
+  It is intended primarily for building packages for Linux distributions
+  to avoid encoding unnecessary shared library dependencies that make
+  shared library migrations more difficult.  If none of the above made any
+  sense to you, don't bother with this flag.
+
+LICENSE
+
+  Copyright 1997, 2003, 2007 Board of Trustees, Leland Stanford Jr.
+  University.  All rights reserved.
+
+  Permission to use, copy, modify, and distribute this software and its
+  documentation for any purpose and without fee is hereby granted,
+  provided that the above copyright notice appear in all copies and that
+  both that copyright notice and this permission notice appear in
+  supporting documentation, and that the name of Stanford University not
+  be used in advertising or publicity pertaining to distribution of the
+  software without specific, written prior permission.  Stanford
+  University makes no representations about the suitability of this
+  software for any purpose.  It is provided "as is" without express or
+  implied warranty.
+
+  THIS SOFTWARE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+  WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
