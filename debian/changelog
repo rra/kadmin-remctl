@@ -2,5 +2,5 @@ kadmin-remctl (1.0-1) unstable; urgency=low
 
   * Initial release.
 
- -- Russ Allbery <rra@debian.org>  Wed,  7 Mar 2007 19:50:03 -0800
+ -- Russ Allbery <rra@debian.org>  Wed, 21 Mar 2007 23:31:27 -0700
 
