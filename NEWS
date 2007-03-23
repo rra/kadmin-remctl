@@ -1,5 +1,11 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 1.1 (unreleased)
+
+    Truncate error messages from kpasswd after the first sentence and
+    replace newlines with spaces to put them on a single line.  kpasswd is
+    more verbose about its errors than kadmin.
+
 kadmin-remctl 1.0 (2007-03-21)
 
     First public release.  Many defaults are hard-coded into source code

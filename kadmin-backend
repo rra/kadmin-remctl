@@ -253,6 +253,8 @@ sub change_password {
         = $kpasswd->expect (2, 'Password change rejected: ',
                             'Password changed.');
     if ($num == 1) {
+        $after =~ s/\..*//;
+        $after =~ s/\n/ /g;
         print "retstr: $after\n";
         die "error: $after\n";
     } elsif ($error) {
