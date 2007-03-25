@@ -13,11 +13,6 @@ AC_CONFIG_AUX_DIR([tools])
 AM_INIT_AUTOMAKE
 AM_MAINTAINER_MODE
 
-dnl I have no idea why this is necessary when it doesn't seem to be for other
-dnl packages, but for some reason with this package I have to include krb5.m4
-dnl or RRA_LIB_KRB5 is never resolved.
-m4_include([m4/krb5.m4])
-
 AC_PROG_CC
 AC_PROG_INSTALL
 

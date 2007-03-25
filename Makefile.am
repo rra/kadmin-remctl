@@ -6,6 +6,7 @@
 # See README for licensing terms.
 
 AUTOMAKE_OPTIONS = foreign
+ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = docs/design kadmin-backend.8 passwd_change.1 passwd_change.pod \
 	remctl/kadmin remctl/password
 
