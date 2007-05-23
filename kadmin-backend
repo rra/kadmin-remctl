@@ -54,6 +54,22 @@ our $KASETKEY   = '/usr/local/bin/gen_srvtab';
 # Path to the ACL file of who can change passwords.
 our $RESET_ACL  = '/etc/leland/remctl/kadmin-reset.acl';
 
+# Instance configuration.  Each key in this hash is an instance.  Each value
+# is a hash with the following key/value pairs:
+#
+#     acl      => file listing principals that can manage this instance
+#     checking => true if we should enable password strength checking
+#     reset    => true if we should allow password resets
+#
+# No instances are configured by default.
+our %INSTANCES  = ();
+
+# Load options from a configuration file, if present.
+if (-r "/etc/kadmin-remctl.conf") {
+    do "/etc/kadmin-remctl.conf"
+        or die (($@ || $!) . "\n");
+}
+
 # The help text.
 our $HELP = <<'EOH';
 Kerberos administrative remctl help:
@@ -64,12 +80,38 @@ Kerberos administrative remctl help:
   kadmin disable <user>                         Disable <user> account
   kadmin enable <user>                          Enable <user> account
   kadmin examine <user>                         Show information for <user>
+  kadmin instance check <user> <inst>           Whether <user>/<inst> exists
+  kadmin instance create <user> <inst> <pass>   Create <user>/<inst> account
+  kadmin instance delete <user> <inst>          Delete <user>/<inst> account
+  kadmin instance list <inst>                   List all */<inst> accounts
+  kadmin instance reset <user> <inst> <pass>    Set password for <user>/<inst>
   kadmin reset_passwd <user> <password>         Change password for <user>
 EOH
 
 ##############################################################################
 # Utility functions
 ##############################################################################
+
+# Check whether a given principal is present in an ACL.  Returns true if so,
+# false otherwise.
+sub check_acl {
+    my ($acl, $principal) = @_;
+    open (ACL, '<', $acl) or die "error: cannot open $acl: $!\n";
+    local $_;
+    my $regex;
+    if ($principal =~ /\@/) {
+        $regex = qr/^\Q$principal\E\s/;
+    } else {
+        $regex = qr/^\Q$principal\E\@/;
+    }
+    while (<ACL>) {
+        if (/$regex/) {
+            return 1;
+        }
+    }
+    close ACL;
+    return;
+}
 
 # Check a principal and make sure it's one that we're allowed to use.  The
 # requirements are that the principal have a NULL instance, that it fit the
@@ -79,6 +121,19 @@ sub check_principal {
     my ($principal) = @_;
     if ($principal !~ /^[a-z][0-9a-z]{2,7}\z/ || $principal eq 'admin') {
         die "error: invalid principal: $principal\n";
+    }
+}
+
+# Check an instance and make sure it's one we're allowed to use.  It must
+# exist in the global instance hash and must be alphanumeric, and the account
+# running this script must be permitted to manage it.
+sub check_instance {
+    my ($instance) = @_;
+    if ($instance !~ /^[a-z][0-9a-z]*\z/ || !$INSTANCES{$instance}) {
+        die "error: invalid instance: $instance\n";
+    }
+    if (!check_acl ($INSTANCES{$instance}{acl}, $ENV{REMUSER})) {
+        die "error: $ENV{REMUSER} not allowed to manage $instance instances\n";
     }
 }
 
@@ -180,14 +235,9 @@ sub reset_password {
     check_password ($password);
 
     # Check that the target principal isn't listed in the password change ACL.
-    open (ACL, '<', $RESET_ACL) or die "error: cannot open $RESET_ACL: $!\n";
-    local $_;
-    while (<ACL>) {
-        if (/^\Q$principal\E\@/) {
-            die "error: password changes not permitted for that user\n";
-        }
+    if (check_acl ($RESET_ACL, $principal)) {
+        die "error: password changes not permitted for that user\n";
     }
-    close ACL;
 
     # We're okay.  Do the password change.
     my $k5admin = spawn_k5admin;
@@ -404,6 +454,141 @@ sub examine_principal {
 }
 
 ##############################################################################
+# Instance management
+##############################################################################
+
+# Check whether a given instance exists.
+sub instance_check {
+    my ($principal, $instance) = @_;
+    check_principal ($principal);
+    check_instance ($principal);
+    my $exist = run_k5admin ("getprinc $principal/$instance");
+    if ($exist) {
+        print "$principal/$instance exists\n";
+    } else {
+        print "$principal/$instance does not exist\n";
+        exit 1;
+    }
+}
+
+# Create an instance for a given principal.  We do not create K4 accounts for
+# instances, only K5.  Instances are always created enabled.
+sub instance_create {
+    my ($principal, $instance, $password) = @_;
+    check_principal ($principal);
+    check_instance ($instance);
+    check_password ($password);
+    my $exist = run_k5admin ("getprinc $principal/$instance");
+    if ($exist) {
+        die "error: account $principal/$instance already exists\n";
+    }
+
+    # Do the account creation.  There is some code duplication with regular
+    # account creation here.
+    my $command = 'add_principal +requires_preauth';
+    if ($INSTANCES{$instance}{checking}) {
+        $command .= ' -policy standard';
+    } else {
+        $command .= ' -clearpolicy';
+    }
+    my $k5admin = spawn_k5admin;
+    unless ($k5admin->expect (2, 'kadmin:')) {
+        die "error: cannot talk to $K5_KADMIN\n";
+    }
+    $k5admin->send ("$command $principal/$instance\n");
+    unless ($k5admin->expect (2, 'password for principal')) {
+        die "error: cannot talk to $K5_KADMIN\n";
+    }
+    $k5admin->send ("$password\n");
+    unless ($k5admin->expect (2, 'password for principal')) {
+        die "error: cannot talk to $K5_KADMIN\n";
+    }
+    $k5admin->send ("$password\n");
+    my ($num, $error, $match, $before, $after)
+        = $k5admin->expect (2, 'add_principal: ', 'kadmin: ');
+    if ($num == 1) {
+        $after =~ s/\n.*//;
+        warn "error: $after\n";
+        $k5admin->send ("quit\n");
+        $k5admin->soft_close;
+        exit 1;
+    } else {
+        $k5admin->send ("quit\n");
+        $k5admin->soft_close;
+    }
+}
+
+# Delete an instance for a given principal.  There is some code duplication
+# here with regular account deletion.
+sub instance_delete {
+    my ($principal, $instance) = @_;
+    check_principal ($principal);
+    check_instance ($instance);
+    my $account = "$principal/$instance";
+    my ($status, $output) = run_k5admin ("delete_principal -force $account");
+    if ($status != 0) {
+        $output =~ s/^delete_principal: //;
+        $output =~ s/\n.*//;
+        die "error: $output\n";
+    }
+}
+
+# List all accounts with a given instance.
+sub instance_list {
+    my ($instance) = @_;
+    check_instance ($instance);
+    my ($status, $output) = run_k5admin ("list_principals */$instance");
+    if ($status != 0) {
+        $output =~ s/^list_principals: //;
+        $output =~ s/\n.*//;
+        die "error: $output\n";
+    } else {
+        print $output;
+    }
+}
+
+# Reset the password for an instance.  This is only allowed if the instance
+# configuration says that password resets are acceptable.  There is some code
+# duplication with regular password resets.
+sub instance_reset {
+    my ($principal, $instance, $password) = @_;
+    check_principal ($principal);
+    check_instance ($instance);
+    check_password ($password);
+    unless ($INSTANCES{$instance}{reset}) {
+        die "error: password reset not permitted for $instance instances\n";
+    }
+
+    # We're okay.  Do the password change.
+    my $k5admin = spawn_k5admin;
+    unless ($k5admin->expect (2, 'kadmin:')) {
+        die "error: cannot talk to $K5_KADMIN\n";
+    }
+    $k5admin->send ("change_password $principal/$instance\n");
+    unless ($k5admin->expect (2, 'password for principal')) {
+        die "error: cannot talk to $K5_KADMIN\n";
+    }
+    $k5admin->send ("$password\n");
+    unless ($k5admin->expect (2, 'password for principal')) {
+        die "error: cannot talk to $K5_KADMIN\n";
+    }
+    $k5admin->send ("$password\n");
+    my ($num, $error, $match, $before, $after)
+        = $k5admin->expect (2, 'change_password: ', 'kadmin: ');
+    if ($num == 1) {
+        $after =~ s/ while changing.*//;
+        print "retstr: $after\n";
+        $k5admin->send ("quit\n");
+        $k5admin->soft_close;
+    } elsif ($error) {
+        die "error: Expect said $error\n";
+    } else {
+        $k5admin->send ("quit\n");
+        $k5admin->soft_close;
+    }
+}
+
+##############################################################################
 # Main routine
 ##############################################################################
 
@@ -472,6 +657,49 @@ if ($cmd eq 'change_passwd') {
 
     reset_password ($princ, $pass);
 
+} elsif ($cmd eq 'instance') {
+
+    my $subcmd = shift;
+
+    if ($subcmd eq 'check') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+
+        instance_check ($princ, $inst);
+
+    } elsif ($subcmd eq 'create') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+        my $pass  = shift or die "error: missing password\n";
+
+        instance_create ($princ, $inst, $pass);
+
+    } elsif ($subcmd eq 'delete') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+
+        instance_delete ($princ, $inst);
+
+    } elsif ($subcmd eq 'list') {
+
+        my $inst  = shift or die "error: missing instance\n";
+
+        instance_list ($inst);
+
+    } elsif ($subcmd eq 'reset') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+        my $pass  = shift or die "error: missing password\n";
+
+        instance_reset ($princ, $inst, $pass);
+
+    } else {
+        die "error: unknown cmd: $cmd $subcmd\n";
+    }
 } else {
     die "error: unknown cmd: $cmd\n";
 }
