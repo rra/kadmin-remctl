@@ -54,6 +54,9 @@ our $KASETKEY   = '/usr/local/bin/gen_srvtab';
 # Path to the ACL file of who can change passwords.
 our $RESET_ACL  = '/etc/leland/remctl/kadmin-reset.acl';
 
+# Reserved principal names.
+our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
+
 # Instance configuration.  Each key in this hash is an instance.  Each value
 # is a hash with the following key/value pairs:
 #
@@ -119,7 +122,7 @@ sub check_acl {
 # "admin".
 sub check_principal {
     my ($principal) = @_;
-    if ($principal !~ /^[a-z][0-9a-z]{2,7}\z/ || $principal eq 'admin') {
+    if ($principal !~ /^[a-z][0-9a-z]{2,7}\z/ || $RESERVED{$principal}) {
         die "error: invalid principal: $principal\n";
     }
 }
@@ -726,18 +729,39 @@ B<kadmin-backend> (delete | disable | enable | examine) I<user>
 
 B<kadmin-backend> (reset_passwd | reset) I<user> I<password>
 
+B<kadmin-backend> instance check I<user> I<instance>
+
+B<kadmin-backend> instance create I<user> I<instance> I<password>
+
+B<kadmin-backend> instance delete I<user> I<instance>
+
+B<kadmin-backend> instance list I<instance>
+
+B<kadmin-backend> instance reset I<user> I<instance> I<password>
+
 =head1 DESCRIPTION
 
 This script provides an interface to the same functionality provided by
 B<kadmin>, but it also takes appropriate action to synchronize changes with
 the AFS kaserver Kerberos v4 realm and with Active Directory where
 appropriate or necessary.  It also provides some additional functions that
-B<kadmin> doesn't provide directly.
+B<kadmin> doesn't provide directly and has separate functions for handling
+account instances (principals in the form I<principal>/I<instance>).
 
-All of these functions except for C<examine> only accept principals with no
-instances or realms that fit the requirements for SUNet IDs (three to eight
-characters starting with a lowercase letter and containing only digits and
-lowercase letters).
+All of these functions except for C<examine> and the C<instance> functions
+only accept principals with no instances or realms that fit the requirements
+for SUNet IDs (three to eight characters starting with a lowercase letter
+and containing only digits and lowercase letters).  C<instance> functions
+require a principal that fits the requirements for a SUNet ID and an
+instance that starts with a letter and contains only lowercase alphanumeric
+characters.  Principals may also be rejected if they're reserved, and
+explicit configuration is required for each instance.
+
+The C<instance> functions should only be used to manage instances that have
+regular passwords.  Instances used by automated processes via keytabs should
+be managed via a different mechanism.  All C<instance> functions do
+additional ACL checking beyond the authorization rules of B<remctld> to
+verify that the remote user is allowed to manage that particular instance.
 
 The C<change_passwd> function changes a user's password given the current
 password.  It is equivalent to B<kpasswd> but only works on the restricted
@@ -775,7 +799,7 @@ old Kerberos v4 B<kadmin> output, and the output for Kerberos v5 is the
 result of B<kadmin getprinc>.  A line of 40 dashes separates the first from
 the second.
 
-The C<help> function prints out a summary of supported commands and their
+The C<help> function prints out a summary of supported functions and their
 arguments.
 
 The C<reset_passwd> function changes the password for a given principal
@@ -784,11 +808,145 @@ user who can themselves reset passwords is not permitted.  C<reset> is
 supported as a synonym (used primarily with a separate password reset
 service).
 
+The C<instance check> function prints a message and returns 0 if that
+combination of principal and instance exists, or a different message and
+returns 1 if the instance does not exist.
+
+The C<instance create> function creates a new I<principal>/I<instance>
+Kerberos principal, provided that it doesn't already exist, and sets its
+password to the provided password.  This principal may or may not have
+password checking enabled, depending on the configuration for that instance.
+
+The C<instance delete> function deletes a I<principal>/I<instance> Kerberos
+principal.
+
+The C<instance list> function lists all Kerberos principals with the given
+instance.  Note that this list may contain service principals and other
+reserved principals that cannot be managed through this interface.
+
+The C<instance reset> function resets the password for a given
+I<principal>/I<instance> Kerberos principal, provided that password resets
+are allowed for that instance type in the B<kadmin-remctl> configuration.
+
 This script is normally run via B<remctld> with different ACLs on each
 supported function.  C<reset_passwd> is a special case and should normally
 be run via a separate instance of B<remctld> listening on a different port
 and using a principal for authentication that disallows TGT-based service
 tickets and has a short lifetime.
+
+=head1 CONFIGURATION
+
+If the file F</etc/kadmin-remctl.conf> exists, B<kadmin-remctl> will load it
+after setting its configuration defaults.  This file can therefore be used
+to override any defaulit in B<kadmin-remctl>.  The configuration file must
+be valid Perl syntax and should normally consist only of variable settings.
+The following Perl variables may be set:
+
+=over 4
+
+=item %INSTANCES
+
+Configuration for which instances can be managed through the C<instance>
+functions and what constraints are placed on how they're managed.  Each key
+should be the name of an instance.  Each value should be a hash containing
+one or more of the following keys:
+
+=over 2
+
+=item acl
+
+The value is the ACL file listing the principals that can manage instances
+of this type.  This option must be set and should contain a simple list of
+fully-qualified principals, one per line.
+
+=item checking
+
+Set to a true value if passwords for this instance should be subject to
+password strength checking, false otherwise.
+
+=item reset
+
+Set to a true value if B<kadmin-remctl> should support resetting passwords
+for this instance (via the C<instance reset> function), false otherwise.
+
+=back
+
+=item $K4_KADMIN
+
+Full path to the Kerberos v4 B<kadmin> command-line utility.  Note that
+B<kadmin-remctl> expects a Stanford-specific B<kadmin> and this may
+therefore not be that useful for other sites.
+
+=item $K4_PRINC
+
+Principal to use for K4 B<kadmin> authentication.
+
+=item $K4_SRVTAB
+
+Srvtab to use for K4 B<kadmin> authentication.
+
+=item $K4_ADMIN
+
+Principal to use for creating and modifying principals in an AFS kaserver
+(used for the operations that can't be done via B<kadmin>).
+
+=item $K4_KEY
+
+Srvtab to use for direct AFS kaserver operations.
+
+=item $K5_KADMIN
+
+Path to the regular Kerberos v5 B<kadmin> command-line client.  Most
+operations are done by running this client interactively under Expect.
+
+=item $K5_KPASSWD
+
+Path to the Kerberos v5 B<kpasswd> command-line client, which is used to
+implement the C<change_passwd> function.
+
+=item $K5_PRINC
+
+Principal to use for authentication of Kerberos v5 B<kadmin> operations.
+
+=item $K5_KEYTAB
+
+Keytab to use for authentication of Kerberos v5 B<kadmin> operations.
+
+=item $KASETKEY
+
+Path to B<kasetkey>, used to make changes to an AFS kaserver that can't be
+done via the Kerberos v4 B<kadmin> program.
+
+=item %RESERVED
+
+A hash of reserved principal names (without instances).  The keys are the
+principals; the value should be any true value.  If a principal is present
+in this hash, B<kadmin-remctl> will refuse to perform any operation on that
+principal or any of its instances.  You can either reset this hash
+completely in the configuration file (if you do, be careful of principals
+like C<kadmin> and C<krbtgt>) or add additional principals to it.
+
+=item $RESET_ACL
+
+Path to the ACL file controlling who can change passwords for other users.
+B<kadmin-remctl> checks the principal for which a password is being changed
+against this file and refuses password changes if the target principal is
+listed in this file.  This ensures that people who can change others'
+passwords cannot themselves have their password changed through that route,
+preventing privilege escalation.
+
+=item $STRENGTH
+
+The Kerberos principal used for strength checking.  When checking the
+strength of a password (the C<check_passwd> function), B<kadmin-remctl>
+attempts to change the password of this principal.  This principal should
+therefore be set DISALLOW_ALL_TIX and not be used on any ACLs, since any
+user with access to the C<check_passwd> function can change its password to
+anything they choose.
+
+=back
+
+For the defaults, see the beginning of the kadmin-backend script.
 
 =head1 AUTHOR
 
