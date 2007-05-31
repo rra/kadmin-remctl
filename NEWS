@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 1.1 (unreleased)
+kadmin-remctl 1.1 (2007-05-31)
 
     Add support for creating and manipulating account instances to
     kadmin-remctl using a separate set of commands.
