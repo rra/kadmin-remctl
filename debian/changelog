@@ -1,3 +1,14 @@
+kadmin-remctl (1.1-1) unstable; urgency=low
+
+  * New upstream release.
+    - Add support for manipulating account instances.
+    - Add support for a kadmin-remctl configuration file.
+    - Add support for reserved principals.
+    - Fix errors in the output for reset_passwd and change_passwd.
+    - Support signalling passwd_change that the user is invalid.
+
+ --
+
 kadmin-remctl (1.0-1) unstable; urgency=low
 
   * Initial release.
