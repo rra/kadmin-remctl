@@ -12,6 +12,16 @@ kadmin-remctl 1.1 (unreleased)
     Add support for reserved principals in kadmin-remctl (principals that
     the script will refuse to act on).
 
+    For password change and reset, always return both an error: and a
+    retstr: line to match the behavior of the old Kerberos v4 interface.
+    Strip out the kpasswd advice to see its man page, since that text will
+    mostly not be useful to our users.
+
+    On password reset, have kadmin-remctl exit with a different exit
+    status if the user does not have permission to change passwords for
+    that account and use that exit status as a trigger in passwd_change to
+    break out of the loop and not keep prompting for a new password.
+
     Truncate error messages from kpasswd after the first sentence and
     replace newlines with spaces to put them on a single line.  kpasswd is
     more verbose about its errors than kadmin.

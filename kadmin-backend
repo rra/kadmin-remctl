@@ -239,7 +239,8 @@ sub reset_password {
 
     # Check that the target principal isn't listed in the password change ACL.
     if (check_acl ($RESET_ACL, $principal)) {
-        die "error: password changes not permitted for that user\n";
+        warn "error: password changes not permitted for that user\n";
+        exit 2;
     }
 
     # We're okay.  Do the password change.
@@ -260,9 +261,11 @@ sub reset_password {
         = $k5admin->expect (2, 'change_password: ', 'kadmin: ');
     if ($num == 1) {
         $after =~ s/ while changing.*//;
+        print "error: $after\n";
         print "retstr: $after\n";
         $k5admin->send ("quit\n");
         $k5admin->soft_close;
+        exit 1;
     } elsif ($error) {
         die "error: Expect said $error\n";
     } else {
@@ -308,8 +311,10 @@ sub change_password {
     if ($num == 1) {
         $after =~ s/\..*//;
         $after =~ s/\n/ /g;
+        $after =~ s/\s+See the kpasswd man page.*//;
+        print "error: $after\n";
         print "retstr: $after\n";
-        die "error: $after\n";
+        exit 1;
     } elsif ($error) {
         die "error: Expect said $error\n";
     } else {

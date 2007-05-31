@@ -220,7 +220,9 @@ reset_password(char *principal)
         if (result->status == 0 && result->stdout_len == 0) {
             printf("Password for %s successfully changed\n", principal);
             return 0;
-        } else
+        } else if (result->status == 2)
+            return -2;
+        else
             return -1;
     }
 }
