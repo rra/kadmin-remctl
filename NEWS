@@ -2,6 +2,16 @@
 
 kadmin-remctl 1.1 (unreleased)
 
+    Add support for creating and manipulating account instances to
+    kadmin-remctl using a separate set of commands.
+
+    Add support in kadmin-remctl for loading configuration from an
+    external configuration file, which can override the defaults set at
+    the top of the script.
+
+    Add support for reserved principals in kadmin-remctl (principals that
+    the script will refuse to act on).
+
     Truncate error messages from kpasswd after the first sentence and
     replace newlines with spaces to put them on a single line.  kpasswd is
     more verbose about its errors than kadmin.
