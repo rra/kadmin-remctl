@@ -1,0 +1,6 @@
+                         kadmin-remctl To-Do List
+
+ * There is quite a bit of code duplication in kadmin-remctl right now
+   between the instance commands and the commands for regular principals.
+   That script needs another layer of abstraction with generic account
+   creation, deletion, and password reset functions.
