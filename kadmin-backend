@@ -336,7 +336,7 @@ sub create_principal {
     check_principal ($principal);
     check_password ($password);
     my $exist = run_k5admin ("getprinc $principal");
-    if ($exist) {
+    if ($exist == 0) {
         die "error: account $principal already exists\n";
     }
     my $code = system ($KASETKEY, '-k', $K4_KEY, '-a', $K4_ADMIN, '-r',
@@ -469,9 +469,9 @@ sub examine_principal {
 sub instance_check {
     my ($principal, $instance) = @_;
     check_principal ($principal);
-    check_instance ($principal);
+    check_instance ($instance);
     my $exist = run_k5admin ("getprinc $principal/$instance");
-    if ($exist) {
+    if ($exist == 0) {
         print "$principal/$instance exists\n";
     } else {
         print "$principal/$instance does not exist\n";
@@ -487,7 +487,7 @@ sub instance_create {
     check_instance ($instance);
     check_password ($password);
     my $exist = run_k5admin ("getprinc $principal/$instance");
-    if ($exist) {
+    if ($exist == 0) {
         die "error: account $principal/$instance already exists\n";
     }
 
