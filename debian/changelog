@@ -7,7 +7,7 @@ kadmin-remctl (1.1-1) unstable; urgency=low
     - Fix errors in the output for reset_passwd and change_passwd.
     - Support signalling passwd_change that the user is invalid.
 
- --
+ -- Russ Allbery <rra@debian.org>  Thu, 31 May 2007 17:01:05 -0700
 
 kadmin-remctl (1.0-1) unstable; urgency=low
 
