@@ -1,9 +1,9 @@
                          kadmin-remctl To-Do List
 
- * There is quite a bit of code duplication in kadmin-remctl right now
+ * There is quite a bit of code duplication in kadmin-backend right now
    between the instance commands and the commands for regular principals.
    That script needs another layer of abstraction with generic account
    creation, deletion, and password reset functions.
 
- * The K4 parts of kadmin-remctl should be optional.  Sites other than
+ * The K4 parts of kadmin-backend should be optional.  Sites other than
    Stanford won't care, but the rest of the code may still be of interest.

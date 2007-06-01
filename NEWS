@@ -3,13 +3,13 @@
 kadmin-remctl 1.1 (2007-05-31)
 
     Add support for creating and manipulating account instances to
-    kadmin-remctl using a separate set of commands.
+    kadmin-backend using a separate set of commands.
 
-    Add support in kadmin-remctl for loading configuration from an
+    Add support in kadmin-backend for loading configuration from an
     external configuration file, which can override the defaults set at
     the top of the script.
 
-    Add support for reserved principals in kadmin-remctl (principals that
+    Add support for reserved principals in kadmin-backend (principals that
     the script will refuse to act on).
 
     For password change and reset, always return both an error: and a
@@ -17,7 +17,7 @@ kadmin-remctl 1.1 (2007-05-31)
     Strip out the kpasswd advice to see its man page, since that text will
     mostly not be useful to our users.
 
-    On password reset, have kadmin-remctl exit with a different exit
+    On password reset, have kadmin-backend exit with a different exit
     status if the user does not have permission to change passwords for
     that account and use that exit status as a trigger in passwd_change to
     break out of the loop and not keep prompting for a new password.
