@@ -25,5 +25,7 @@ kadmin examine       /usr/sbin/kadmin-backend \
     /etc/remctl/acl/data-view 
 kadmin help          /usr/sbin/kadmin-backend \
     ANYUSER
+kadmin instance      /usr/sbin/kadmin-backend logmask=5 \
+    /etc/remctl/acl/kadmin-instance
 kadmin reset_passwd  /usr/sbin/kadmin-backend logmask=3 \
-    /etc/remctl/acl/kadmin-create
+    /etc/remctl/acl/kadmin-reset
