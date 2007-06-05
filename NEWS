@@ -1,5 +1,10 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 1.2 (2007-06-05)
+
+    Support disabling all Kerberos v4 actions in kadmin-backend by setting
+    one of the Kerberos v4 configuration variables to undef.
+
 kadmin-remctl 1.1 (2007-05-31)
 
     Add support for creating and manipulating account instances to

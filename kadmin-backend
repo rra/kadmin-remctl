@@ -32,12 +32,12 @@ use Expect ();
 # Disable sending of kadmin's output to our standard output.
 $Expect::Log_Stdout = 0;
 
-# K4 OPTIONS
-our $K4_KADMIN = '/usr/local/sbin/kadmin';
-our $K4_PRINC  = 'service.lsdb';
-our $K4_SRVTAB = '/etc/leland/srvtab.lsdb';
-our $K4_ADMIN  = 'admin';
-our $K4_KEY    = '/db/srvtab/keys/admin';
+# K4 OPTIONS (set $K4_KADMIN to undef to disable K4)
+our $K4_KADMIN = undef;
+our $K4_PRINC  = undef;
+our $K4_SRVTAB = undef;
+our $K4_ADMIN  = undef;
+our $K4_KEY    = undef;
 
 # K5 OPTIONS
 our $K5_KADMIN  = '/usr/local/sbin/k5admin';
@@ -49,7 +49,7 @@ our $K5_KEYTAB  = '/etc/leland/keytab.lsdb';
 our $STRENGTH   = 'service/password-strength';
 
 # Path to kasetkey, used to create Kerberos v4 principals in an AFS kaserver.
-our $KASETKEY   = '/usr/local/bin/gen_srvtab';
+our $KASETKEY   = undef;
 
 # Path to the ACL file of who can change passwords.
 our $RESET_ACL  = '/etc/leland/remctl/kadmin-reset.acl';
@@ -339,16 +339,18 @@ sub create_principal {
     if ($exist == 0) {
         die "error: account $principal already exists\n";
     }
-    my $code = system ($KASETKEY, '-k', $K4_KEY, '-a', $K4_ADMIN, '-r',
-                       '-s', $principal);
-    if ($code != 0) {
-        die "error: cannot create K4 principal for $principal\n";
-    }
-    if ($status ne 'enabled') {
-        my $code = system ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB,
-                           'disable', $principal);
+    if ($K4_KADMIN) {
+        my $code = system ($KASETKEY, '-k', $K4_KEY, '-a', $K4_ADMIN, '-r',
+                           '-s', $principal);
         if ($code != 0) {
-            die "error: cannot disable K4 principal for $principal\n";
+            die "error: cannot create K4 principal for $principal\n";
+        }
+        if ($status ne 'enabled') {
+            my $code = system ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB,
+                               'disable', $principal);
+            if ($code != 0) {
+                die "error: cannot disable K4 principal for $principal\n";
+            }
         }
     }
     my $command = 'add_principal -policy standard +requires_preauth';
@@ -387,8 +389,11 @@ sub create_principal {
 sub delete_principal {
     my ($principal) = @_;
     check_principal ($principal);
-    system ($KASETKEY, '-k', $K4_KEY, '-a', $K4_ADMIN, '-D', $principal) == 0
-        or die "error: cannot delete $principal in Kerberos v4\n";
+    if ($K4_KADMIN) {
+        my @args = ('-k', $K4_KEY, '-a', $K4_ADMIN, '-D', $principal);
+        system ($KASETKEY, @args) == 0
+            or die "error: cannot delete $principal in Kerberos v4\n";
+    }
     my ($status, $output) = run_k5admin ("delete_principal -force $principal");
     if ($status != 0) {
         $output =~ s/^delete_principal: //;
@@ -411,9 +416,11 @@ sub disable_principal {
         $output =~ s/\n.*//;
         die "error: $output\n";
     }
-    system ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, 'disable',
-            $principal) == 0
-        or die "error: cannot disable $principal in Kerberos v4\n";
+    if ($K4_KADMIN) {
+        system ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, 'disable',
+                $principal) == 0
+            or die "error: cannot disable $principal in Kerberos v4\n";
+    }
 }
 
 # Enable a principal.  This must be done separately in K5 and K4.  Eventually,
@@ -428,9 +435,11 @@ sub enable_principal {
         $output =~ s/\n.*//;
         die "error: $output\n";
     }
-    system ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, 'enable',
-            $principal) == 0
-        or die "error: cannot enable $principal in Kerberos v4\n";
+    if ($K4_KADMIN) {
+        system ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, 'enable',
+                $principal) == 0
+            or die "error: cannot enable $principal in Kerberos v4\n";
+    }
 }
 
 ##############################################################################
@@ -451,12 +460,14 @@ sub examine_principal {
     unless ($principal =~ m%^[a-zA-Z0-9]+(/[a-zA-Z0-9._-]+)?\z%) {
         die "error: invalid character in principal name\n";
     }
-    my $k4principal = $principal;
-    $k4principal =~ s%(/[^.]+)\..*%$1%;
-    $k4principal =~ s%/%.%;
-    system ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, 'examine',
-            $k4principal);
-    print '-' x 40, "\n";
+    if ($K4_KADMIN) {
+        my $k4principal = $principal;
+        $k4principal =~ s%(/[^.]+)\..*%$1%;
+        $k4principal =~ s%/%.%;
+        system ($K4_KADMIN, '-p', $K4_PRINC, '-s', $K4_SRVTAB, 'examine',
+                $k4principal);
+        print '-' x 40, "\n";
+    }
     my ($status, $output) = run_k5admin ("getprinc $principal");
     print $output;
 }
@@ -881,6 +892,9 @@ for this instance (via the C<instance reset> function), false otherwise.
 Full path to the Kerberos v4 B<kadmin> command-line utility.  Note that
 B<kadmin-remctl> expects a Stanford-specific B<kadmin> and this may
 therefore not be that useful for other sites.
+
+If this is set to undef, all Kerberos v4 actions will be skipped and this
+script will deal purely with Kerberos v5.
 
 =item $K4_PRINC
 

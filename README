@@ -62,10 +62,11 @@ REQUIREMENTS
   The kadmin backend is written in Perl and requires the Perl Expect
   module.  It calls the Kerberos v5 kadmin and kpasswd programs and
   therefore requires that they be available.  For integration with the AFS
-  kaserver Kerberos v4 realm, it also requires kasetkey and a Kerberos v4
+  kaserver Kerberos v4 realm, it can also use kasetkey and a Kerberos v4
   kadmin client available.  (The Kerberos v4 kadmin client is an
   unreleased internal Stanford client, so this part of the code would need
-  to be modified at other sites.)
+  to be modified at other sites that need to synchronize with Kerberos
+  v4.)  The Kerberos v4 synchronization is disabled by default.
 
   The passwd_change C client requires the C libremctl library be available
   to build (plus, obviously, a C compiler).  It also requires a Kerberos
@@ -93,10 +94,11 @@ INSTALLATION
   That being said, there are two components: the remctl backend and
   remctld configuration for the interface, and the passwd_change client
   program.  The remctl backend script is a Perl script and doesn't require
-  compilation, only changes to the paths at the start of the script.
-  remctl configuration fragments suitable for being included in your
-  remctld configuration are in the remctl subdirectory.  The kadmin
-  fragment provides the general interface.
+  compilation.  It loads its defaults from /etc/kadmin-remctl.conf; see
+  its man page for more details on the configuration options, most of
+  which must be set.  remctl configuration fragments suitable for being
+  included in your remctld configuration are in the remctl subdirectory.
+  The kadmin fragment provides the general interface.
 
   To set up the server for the passwd_change client, create a special
   designated principal in your Kerberos database, set the
