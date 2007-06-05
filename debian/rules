@@ -74,7 +74,7 @@ install:
 	    $(CURDIR)/debian/kadmin-remctl/etc/remctl/conf.d/kadmin
 	install -m 644 remctl/password \
 	    $(CURDIR)/debian/kadmin-remctl/etc/remctl/reset/remctl.conf
-	install -m 644 debian/password-reset.run \
+	install -m 755 debian/password-reset.run \
 	    $(CURDIR)/debian/kadmin-remctl/service/password-reset/run
 
 binary: binary-arch binary-indep

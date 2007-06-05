@@ -4,8 +4,9 @@ kadmin-remctl (1.2-1) unstable; urgency=low
     - Support disabling the Kerberos v4 synchronization.
   * Only recommend kasetkey, don't depend on it, since Kerberos v4
     synchronization is disabled by default.
+  * Install the password-reset run script executable.
 
- -- Russ Allbery <rra@debian.org>  Tue, 05 Jun 2007 15:49:11 -0700
+ -- Russ Allbery <rra@debian.org>  Tue, 05 Jun 2007 15:57:49 -0700
 
 kadmin-remctl (1.1-1) unstable; urgency=low
 
