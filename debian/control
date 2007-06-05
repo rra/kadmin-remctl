@@ -8,8 +8,8 @@ Standards-Version: 3.7.2
 
 Package: kadmin-remctl
 Architecture: all
-Depends: remctl-server, kasetkey, krb5-user, libexpect-perl
-Recommends: daemontools
+Depends: remctl-server, krb5-user, libexpect-perl
+Recommends: daemontools, kasetkey
 Description: remctl backend providing kadmin functions
  This package provides a remctl backend and configuration for doing kadmin
  functions via remctl.  It includes setup and configuration for a separate
