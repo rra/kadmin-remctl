@@ -12,6 +12,9 @@ export QUILT_PATCHES = debian/patches
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
 
+# Installation directories.
+KADMIN	= $(CURDIR)/debian/kadmin-remctl
+
 # Tell Autoconf the correct system types.
 DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -67,15 +70,16 @@ install:
 	dh_clean -k
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	dh_install -a -i --fail-missing
-	install -d $(CURDIR)/debian/kadmin-remctl/etc/remctl/conf.d
-	install -d $(CURDIR)/debian/kadmin-remctl/etc/remctl/reset
-	install -d $(CURDIR)/debian/kadmin-remctl/service/password-reset
-	install -m 644 remctl/kadmin \
-	    $(CURDIR)/debian/kadmin-remctl/etc/remctl/conf.d/kadmin
-	install -m 644 remctl/password \
-	    $(CURDIR)/debian/kadmin-remctl/etc/remctl/reset/remctl.conf
+	install -d $(KADMIN)/etc/remctl/conf.d
+	install -m 644 remctl/kadmin $(KADMIN)/etc/remctl/conf.d/kadmin
+	install -d $(KADMIN)/etc/remctl/reset
+	install -m 644 remctl/password $(KADMIN)/etc/remctl/reset/remctl.conf
+	install -d $(KADMIN)/service/password-reset
 	install -m 755 debian/password-reset.run \
-	    $(CURDIR)/debian/kadmin-remctl/service/password-reset/run
+	    $(KADMIN)/service/password-reset/run
+	install -d $(KADMIN)/usr/share/lintian/overrides
+	install -m 0644 debian/kadmin-remctl.lintian \
+	    $(KADMIN)/usr/share/lintian/overrides/kadmin-remctl
 
 binary: binary-arch binary-indep
 
