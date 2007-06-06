@@ -294,7 +294,7 @@ sub change_password {
     my ($num, $error, $match, $before, $after)
         = $kpasswd->expect (2, 'kpasswd: ', 'Enter new password: ');
     if ($num == 1) {
-        $after =~ s/\n.*//;
+        $after =~ s/\r?\n.*//;
         print "retstr: $after\n";
         die "error: $after\n";
     } elsif ($error) {
@@ -310,7 +310,7 @@ sub change_password {
                             'Password changed.');
     if ($num == 1) {
         $after =~ s/\..*//;
-        $after =~ s/\n/ /g;
+        $after =~ s/\r?\n/ /g;
         $after =~ s/\s+See the kpasswd man page.*//;
         print "error: $after\n";
         print "retstr: $after\n";
@@ -373,7 +373,7 @@ sub create_principal {
     my ($num, $error, $match, $before, $after)
         = $k5admin->expect (2, 'add_principal: ', 'kadmin: ');
     if ($num == 1) {
-        $after =~ s/\n.*//;
+        $after =~ s/\r?\n.*//;
         print "retstr: $after\n";
         $k5admin->send ("quit\n");
         $k5admin->soft_close;
@@ -397,7 +397,7 @@ sub delete_principal {
     my ($status, $output) = run_k5admin ("delete_principal -force $principal");
     if ($status != 0) {
         $output =~ s/^delete_principal: //;
-        $output =~ s/\n.*//;
+        $output =~ s/\r?\n.*//;
         die "error: $output\n";
     }
 }
@@ -413,7 +413,7 @@ sub disable_principal {
     my ($status, $output) = run_k5admin ("modprinc -allow_tix $principal");
     if ($status != 0) {
         $output =~ s/^modify_principal: //;
-        $output =~ s/\n.*//;
+        $output =~ s/\r?\n.*//;
         die "error: $output\n";
     }
     if ($K4_KADMIN) {
@@ -432,7 +432,7 @@ sub enable_principal {
     my ($status, $output) = run_k5admin ("modprinc +allow_tix $principal");
     if ($status != 0) {
         $output =~ s/^modify_principal: //;
-        $output =~ s/\n.*//;
+        $output =~ s/\r?\n.*//;
         die "error: $output\n";
     }
     if ($K4_KADMIN) {
@@ -526,7 +526,7 @@ sub instance_create {
     my ($num, $error, $match, $before, $after)
         = $k5admin->expect (2, 'add_principal: ', 'kadmin: ');
     if ($num == 1) {
-        $after =~ s/\n.*//;
+        $after =~ s/\r?\n.*//;
         warn "error: $after\n";
         $k5admin->send ("quit\n");
         $k5admin->soft_close;
@@ -547,7 +547,7 @@ sub instance_delete {
     my ($status, $output) = run_k5admin ("delete_principal -force $account");
     if ($status != 0) {
         $output =~ s/^delete_principal: //;
-        $output =~ s/\n.*//;
+        $output =~ s/\r?\n.*//;
         die "error: $output\n";
     }
 }
@@ -559,7 +559,7 @@ sub instance_list {
     my ($status, $output) = run_k5admin ("list_principals */$instance");
     if ($status != 0) {
         $output =~ s/^list_principals: //;
-        $output =~ s/\n.*//;
+        $output =~ s/\r?\n.*//;
         die "error: $output\n";
     } else {
         print $output;
