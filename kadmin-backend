@@ -335,8 +335,8 @@ sub create_principal {
     my ($principal, $password, $status) = @_;
     check_principal ($principal);
     check_password ($password);
-    my $exist = run_k5admin ("getprinc $principal");
-    if ($exist == 0) {
+    my (undef, $output) = run_k5admin ("getprinc $principal");
+    if ($output !~ /does not exist/) {
         die "error: account $principal already exists\n";
     }
     if ($K4_KADMIN) {
@@ -395,7 +395,7 @@ sub delete_principal {
             or die "error: cannot delete $principal in Kerberos v4\n";
     }
     my ($status, $output) = run_k5admin ("delete_principal -force $principal");
-    if ($status != 0) {
+    if ($status != 0 || $output =~ /^delete_principal: /) {
         $output =~ s/^delete_principal: //;
         $output =~ s/\r?\n.*//;
         die "error: $output\n";
@@ -411,7 +411,7 @@ sub disable_principal {
     my ($principal) = @_;
     check_principal ($principal);
     my ($status, $output) = run_k5admin ("modprinc -allow_tix $principal");
-    if ($status != 0) {
+    if ($status != 0 || $output =~ /^modify_principal: /) {
         $output =~ s/^modify_principal: //;
         $output =~ s/\r?\n.*//;
         die "error: $output\n";
@@ -430,7 +430,7 @@ sub enable_principal {
     my ($principal) = @_;
     check_principal ($principal);
     my ($status, $output) = run_k5admin ("modprinc +allow_tix $principal");
-    if ($status != 0) {
+    if ($status != 0 || $output =~ /^modify_principal: /) {
         $output =~ s/^modify_principal: //;
         $output =~ s/\r?\n.*//;
         die "error: $output\n";
@@ -481,8 +481,8 @@ sub instance_check {
     my ($principal, $instance) = @_;
     check_principal ($principal);
     check_instance ($instance);
-    my $exist = run_k5admin ("getprinc $principal/$instance");
-    if ($exist == 0) {
+    my ($status, $output) = run_k5admin ("getprinc $principal/$instance");
+    if ($output !~ /does not exist/) {
         print "$principal/$instance exists\n";
     } else {
         print "$principal/$instance does not exist\n";
@@ -497,8 +497,8 @@ sub instance_create {
     check_principal ($principal);
     check_instance ($instance);
     check_password ($password);
-    my $exist = run_k5admin ("getprinc $principal/$instance");
-    if ($exist == 0) {
+    my ($status, $output) = run_k5admin ("getprinc $principal/$instance");
+    if ($output !~ /does not exist/) {
         die "error: account $principal/$instance already exists\n";
     }
 
@@ -545,7 +545,7 @@ sub instance_delete {
     check_instance ($instance);
     my $account = "$principal/$instance";
     my ($status, $output) = run_k5admin ("delete_principal -force $account");
-    if ($status != 0) {
+    if ($status != 0 || $output =~ /^delete_principal: /) {
         $output =~ s/^delete_principal: //;
         $output =~ s/\r?\n.*//;
         die "error: $output\n";
@@ -557,7 +557,7 @@ sub instance_list {
     my ($instance) = @_;
     check_instance ($instance);
     my ($status, $output) = run_k5admin ("list_principals */$instance");
-    if ($status != 0) {
+    if ($status != 0 || $output =~ /^list_principals: /) {
         $output =~ s/^list_principals: //;
         $output =~ s/\r?\n.*//;
         die "error: $output\n";
