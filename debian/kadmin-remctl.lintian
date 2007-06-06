@@ -1,2 +1,2 @@
-W: kadmin-remctl: file-in-unusual-dir service/password-reset/run
-E: kadmin-remctl: non-standard-toplevel-dir service/
+kadmin-remctl binary: file-in-unusual-dir service/password-reset/run
+kadmin-remctl binary: non-standard-toplevel-dir service/
