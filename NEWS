@@ -6,6 +6,10 @@ kadmin-remctl 1.3 (unreleased)
     with -q.  It always exits 0, even if the operation failed.  Adjust for
     this by inspecting its output instead.
 
+    Add support for faking K4 kadmin examine output based on the K5
+    getprinc output, for backwards compatibility for Stanford Registry
+    integration.
+
 kadmin-remctl 1.2 (2007-06-05)
 
     Support disabling all Kerberos v4 actions in kadmin-backend by setting
