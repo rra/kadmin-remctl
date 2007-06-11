@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 1.3 (unreleased)
+kadmin-remctl 1.3 (2007-06-11)
 
     MIT Kerberos kadmin doesn't return a useful exit status in conjunction
     with -q.  It always exits 0, even if the operation failed.  Adjust for
