@@ -1,5 +1,9 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 1.4 (unreleased)
+
+    Properly handle K4 output faking when the principal doesn't exist.
+
 kadmin-remctl 1.3 (2007-06-11)
 
     MIT Kerberos kadmin doesn't return a useful exit status in conjunction

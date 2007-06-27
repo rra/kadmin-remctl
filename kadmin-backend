@@ -475,18 +475,22 @@ sub examine_principal {
     my ($status, $output) = run_k5admin ("getprinc $principal");
     if ($K4_FAKE) {
         my $k4output;
-        if ($output =~ /DISALLOW_ALL_TIX/) {
-            $k4output = "status: disabled\n";
+        if ($output =~ /Principal does not exist while retrieving/) {
+            $k4output = 'error: No such entry in the database';
         } else {
-            $k4output = "status: enabled\n";
-        }
-        $k4output .= "account expiration: never\n";
-        if ($output =~ /Last password change: (.*)/) {
-            $k4output .= "password last changed: $1\n";
-        }
-        if ($output =~ /Last modified: ([^\(\n]+?)\s+\(([^\)\n]+)\)/) {
-            $k4output .= "modification time: $1\n";
-            $k4output .= "modified by: $2\n";
+            if ($output =~ /DISALLOW_ALL_TIX/) {
+                $k4output = "status: disabled\n";
+            } else {
+                $k4output = "status: enabled\n";
+            }
+            $k4output .= "account expiration: never\n";
+            if ($output =~ /Last password change: (.*)/) {
+                $k4output .= "password last changed: $1\n";
+            }
+            if ($output =~ /Last modified: ([^\(\n]+?)\s+\(([^\)\n]+)\)/) {
+                $k4output .= "modification time: $1\n";
+                $k4output .= "modified by: $2\n";
+            }
         }
         $output = $k4output . "\n" . ('-' x 40) . "\n" . $output;
     }
