@@ -4,3 +4,7 @@
    between the instance commands and the commands for regular principals.
    That script needs another layer of abstraction with generic account
    creation, deletion, and password reset functions.
+
+ * passwd_change should get its currently hard-coded configuration from
+   /etc/krb5.conf instead, perhaps with the hard-coded values as a
+   fallback only.
