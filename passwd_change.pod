@@ -13,14 +13,76 @@ other than the person running the program.  It may only be run by
 authorized users (normally Help Desk personnel); all others will receive
 an error message.  The person running the program must have a valid ticket
 cache when running it and will be asked to reauthenticate as a security
-precaution.  Then, I<user> will be checked against Stanford's user
-database and the user's full name will be displayed for verification if
-found.  When changing the password for a base-level account, the user will
-not be found but one can elect to continue anyway.  Finally, the user is
-prompted for the new password (twice).
+precaution.  Then, I<user> will be checked against the user database (in
+the form of a unified passwd file) and the user's full name will be
+displayed for verification if found.  When changing the password for an
+account not listed in the passwd file, the user will not be found but one
+can elect to continue anyway.  Finally, the user is prompted for the new
+password (twice).
 
 This program uses the remctl protocol to talk to a central server to do
 the password change.
+
+=head1 CONFIGURATION
+
+B<passwd_change> needs four configuration parameters: The full path to a
+passwd file listing all of the local users (used only to get full names
+for verification that one got the right account), the service principal to
+use to authenticate to the password changing service, the host on which
+the password changing service is running, and the port on which the
+service is running.  Defaults for these values are set at compilation
+time, but they can be overridden in the F</etc/krb5.conf> file (or
+wherever F<krb5.conf> path the Kerberos libraries were compiled to use).
+
+B<passwd_change> looks for a C<passwd_change> section in the [appdefaults]
+section of F<krb5.conf> and supports the following configuration options:
+
+=over 4
+
+=item host
+
+The host on which the password changing service is running.
+
+=item passwd_file
+
+The full path to a passwd file listing users.  This file should be
+structured like a normal Unix F</etc/passwd> file; all fields except
+username and full name are ignored.  This file is used only to retrieve
+the user's full name as a verification step that the correct account's
+password is being changed.
+
+=item port
+
+The port on which the password changing service is running.  The default
+value is 4443.
+
+=item service
+
+The Kerberos service for which to get credentials before changing
+passwords.  This should match the Kerberos principal used by the
+B<remctld> running the password changing service.
+
+=back
+
+For example, here is the configuration for Stanford:
+
+    [appdefaults]
+        passwd_change = {
+            passwd_file = /afs/ir/service/etc/passwd.all
+            host        = password-change.stanford.edu
+            port        = 4443
+            service     = service/password-change@stanford.edu
+        }
+
+=head1 BUGS
+
+The business of getting the target user's full name from a password file
+is an ugly hack that only happens to work at Stanford for legacy reasons.
+A saner method should be used, like querying an LDAP server.
+
+=head1 SEE ALSO
+
+kadmin-backend(8), kpasswd(1), passwd(5), remctl(1), remctld(8)
 
 =head1 AUTHOR
 

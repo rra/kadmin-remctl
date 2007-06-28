@@ -42,14 +42,41 @@ static char *program;
 
 
 /*
+**  Load a string option from Kerberos appdefaults.
+*/
+static void
+config_string(krb5_context ctx, const char *opt, const char *defval,
+              char **result)
+{
+    krb5_appdefault_string(ctx, "passwd_change", NULL, opt, defval, result);
+}
+
+/*
+**  Load a number option from Kerberos appdefaults.  The native interface
+**  doesn't support numbers, so we actually read a string and then convert.
+*/
+static void
+config_number(krb5_context ctx, const char *opt, int defval, int *result)
+{
+    char *tmp = NULL;
+
+    krb5_appdefault_string(ctx, "passwd_change", NULL, opt, "", &tmp);
+    if (tmp != NULL && tmp[0] != '\0')
+        *result = atoi(tmp);
+    else
+        *result = defval;
+    if (tmp != NULL)
+        free(tmp);
+}
+
+/*
 **  Open a connection to kadmind and authenticate to the server.  This creates
 **  a new ticket file and obtains the service/password-change ticket which
 **  will then be used to change the user's password.
 */
 static int
-login(void)
+login(krb5_context ctx, char *service)
 {
-    krb5_context ctx;
     krb5_error_code status;
     krb5_ccache ccache;
     krb5_principal princ;
@@ -58,11 +85,6 @@ login(void)
 
     /* First of all, we have to figure out what the admin principal is.  We do
        that by parsing the user's credential cache. */
-    status = krb5_init_context(&ctx);
-    if (status != 0) {
-        com_err(program, status, "while initializing Kerberos");
-        return -1;
-    }
     status = krb5_cc_default(ctx, &ccache);
     if (status != 0) {
         com_err(program, status, "while reading ticket cache");
@@ -80,7 +102,7 @@ login(void)
     krb5_get_init_creds_opt_init(&opts);
     memset(&creds, 0, sizeof(creds));
     status = krb5_get_init_creds_password(ctx, &creds, princ, NULL,
-                 krb5_prompter_posix, NULL, 0, PRINCIPAL, &opts);
+                 krb5_prompter_posix, NULL, 0, service, &opts);
     if (status != 0) {
         com_err(program, status, "while authenticating");
         krb5_free_principal(ctx, princ);
@@ -186,7 +208,8 @@ get_password(char **password)
 **  and then call remctl to do the real work.
 */
 static int
-reset_password(char *principal)
+reset_password(char *principal, const char *service, const char *host,
+               unsigned short port)
 {
     int status;
     char *password;
@@ -207,7 +230,7 @@ reset_password(char *principal)
     command[2] = principal;
     command[3] = password;
     command[4] = NULL;
-    result = remctl(HOST, PORT, PRINCIPAL, command);
+    result = remctl(host, port, service, command);
     if (result->error != NULL) {
         fprintf(stderr, "%s", result->error);
         remctl_result_free(result);
@@ -236,7 +259,7 @@ reset_password(char *principal)
 **  can't be found.
 */
 static char *
-find_name(char *username)
+find_name(char *username, const char *passwd_file)
 {
     FILE *passwd;
     char buffer[1024];
@@ -254,7 +277,7 @@ find_name(char *username)
     strcat(search, ":");
 
     /* Open the password file. */
-    passwd = fopen(PASSWD_FILE, "r");
+    passwd = fopen(passwd_file, "r");
     if (passwd == NULL) {
         fprintf(stderr, "%s: unable to open site password file: %s\n",
                 program, strerror(errno));
@@ -289,13 +312,14 @@ find_name(char *username)
     free(search);
     return name;
 }
-  
 
 int
 main(int argc, char **argv)
 {
+    krb5_context ctx;
+    char *passwd, *service, *host;
     char principal[BUFSIZ], ans[BUFSIZ];
-    int status, tries;
+    int port, status, tries;
     char *name;
 
     /* Set the name of the program, used by com_err(), stripping off the path
@@ -315,11 +339,22 @@ main(int argc, char **argv)
                "supplied on the command line.\n");
         exit(0);
     }
-  
+
+    /* Obtain a Kerberos context so that we can look up configuration. */
+    status = krb5_init_context(&ctx);
+    if (status != 0) {
+        com_err(program, status, "while initializing Kerberos");
+        return -1;
+    }
+    config_string(ctx, "passwd_file", PASSWD_FILE, &passwd);
+    config_string(ctx, "service_principal", PRINCIPAL, &service);
+    config_string(ctx, "server", HOST, &host);
+    config_number(ctx, "port", PORT, &port);
+
     /* Authenticate to kadmind. */
     printf("Authenticating to Kerberos....\n");
-    if (login())
-        exit (1);
+    if (login(ctx, service))
+        exit(1);
     printf("\n");
   
     /* If we were given a username on the command line, use it.  Otherwise,
@@ -337,7 +372,7 @@ main(int argc, char **argv)
     }
 
     /* Find the real name and print it out to make sure it's right. */
-    name = find_name(principal);
+    name = find_name(principal, passwd);
     if (name == NULL) {
         printf("That username was not found in the password file."
                "  Continue? ");
@@ -357,7 +392,7 @@ main(int argc, char **argv)
 
     /* Change the password.  Loop up to five times in the case of an error. */
     for (tries = 0; tries < 5; tries++) {
-        status = reset_password(principal);
+        status = reset_password(principal, service, host, port);
         if (!status || status == -2)
             break;
         else
