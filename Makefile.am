@@ -24,3 +24,14 @@ $(srcdir)/passwd_change.1: $(srcdir)/passwd_change.pod
 $(srcdir)/kadmin-backend.8: $(srcdir)/kadmin-backend
 	pod2man --release=$(VERSION) --center="Administrative Commands" \
 	    --section=8 $(srcdir)/kadmin-backend > $@
+
+# A set of flags for warnings.  Add -O because gcc won't find some warnings
+# without optimization turned on, and add -DDEBUG=1 so we'll also compile all
+# debugging code and test it.
+WARNINGS = -g -O -DDEBUG=1 -Wall -W -Wendif-labels -Wpointer-arith \
+        -Wbad-function-cast -Wwrite-strings -Wstrict-prototypes \
+        -Wmissing-prototypes -Wnested-externs -Werror
+
+warnings:
+	$(MAKE) CFLAGS='$(WARNINGS)'
+	$(MAKE) CFLAGS='$(WARNINGS)' $(check_PROGRAMS)
