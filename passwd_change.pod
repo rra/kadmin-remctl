@@ -39,10 +39,6 @@ section of F<krb5.conf> and supports the following configuration options:
 
 =over 4
 
-=item host
-
-The host on which the password changing service is running.
-
 =item passwd_file
 
 The full path to a passwd file listing users.  This file should be
@@ -56,7 +52,11 @@ password is being changed.
 The port on which the password changing service is running.  The default
 value is 4443.
 
-=item service
+=item server
+
+The host on which the password changing service is running.
+
+=item service_principal
 
 The Kerberos service for which to get credentials before changing
 passwords.  This should match the Kerberos principal used by the
@@ -68,10 +68,10 @@ For example, here is the configuration for Stanford:
 
     [appdefaults]
         passwd_change = {
-            passwd_file = /afs/ir/service/etc/passwd.all
-            host        = password-change.stanford.edu
-            port        = 4443
-            service     = service/password-change@stanford.edu
+            passwd_file       = /afs/ir/service/etc/passwd.all
+            server            = password-change.stanford.edu
+            port              = 4443
+            service_principal = service/password-change@stanford.edu
         }
 
 =head1 BUGS
