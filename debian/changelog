@@ -1,3 +1,13 @@
+kadmin-remctl (1.4-1) unstable; urgency=low
+
+  * New upstream release.
+    - Fix K4 examine faking when the account doesn't exist.
+    - passwd_change now takes configuration from krb5.conf.
+  * Drop the local patch to change the passwd_change defaults and instead
+    pass Stanford's defaults as compiler options in debian/rules.
+
+ -- Russ Allbery <rra@debian.org>  Thu, 28 Jun 2007 17:05:38 -0700
+
 kadmin-remctl (1.3-1) unstable; urgency=low
 
   * New upstream release.
