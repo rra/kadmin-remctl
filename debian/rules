@@ -20,8 +20,8 @@ else
     SYSTEM = --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
 endif
 
-CFLAGS = -g -Wall -DPASSWD_FILE=\"/afs/ir/service/etc/passwd.all\" \
-	-DHOST=\"password-change.stanford.edu\"
+CFLAGS = -g -Wall -DPASSWD_FILE=\\\"/afs/ir/service/etc/passwd.all\\\" \
+	-DHOST=\\\"password-change.stanford.edu\\\"
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
     CFLAGS += -O0
 else
