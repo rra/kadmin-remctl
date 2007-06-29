@@ -25,14 +25,22 @@
 #include <remctl.h>
 
 /* The full path to the site-wide password file, for real name mapping. */
-#define PASSWD_FILE "/afs/ir/service/etc/passwd.all"
+#ifndef PASSWD_FILE
+# define PASSWD_FILE "/full/path/to/passwd/file"
+#endif
 
 /* The principal name used for password changing. */
-#define PRINCIPAL "service/password-change@stanford.edu"
+#ifndef PRINCIPAL
+# define PRINCIPAL "service/password-change"
+#endif
 
 /* The host and port to which the remctl connection should be made. */
-#define HOST "lsdb.stanford.edu"
-#define PORT 4443
+#ifndef HOST
+# define HOST "password-change.example.org"
+#endif
+#ifndef PORT
+# define PORT 4443
+#endif
 
 /* The memory cache used for the password change authentication. */
 #define CACHE_NAME "MEMORY:passwd_change"
