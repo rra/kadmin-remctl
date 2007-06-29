@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 1.4 (unreleased)
+kadmin-remctl 1.4 (2007-06-28)
 
     Add support in passwd_change for reading configuration from the system
     krb5.conf and only use the compiled-in values as defaults.

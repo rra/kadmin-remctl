@@ -1,4 +1,4 @@
-                            kadmin-remctl 1.3
+                            kadmin-remctl 1.4
              (remctl interface for Kerberos kadmin functions)
 
                 Written by Russ Allbery <rra@stanford.edu>
@@ -91,14 +91,14 @@ INSTALLATION
   Stanford.  It needs to be reviewed and modified for changing local
   assumptions, paths, and integration requirements.
 
-  That being said, there are two components: the remctl backend and
-  remctld configuration for the interface, and the passwd_change client
-  program.  The remctl backend script is a Perl script and doesn't require
-  compilation.  It loads its defaults from /etc/kadmin-remctl.conf; see
-  its man page for more details on the configuration options, most of
-  which must be set.  remctl configuration fragments suitable for being
-  included in your remctld configuration are in the remctl subdirectory.
-  The kadmin fragment provides the general interface.
+  There are two components: the remctl backend and remctld configuration
+  for the interface, and the passwd_change client program.  The remctl
+  backend script is a Perl script and doesn't require compilation.  It
+  loads its defaults from /etc/kadmin-remctl.conf; see its man page for
+  more details on the configuration options, most of which must be set.
+  remctl configuration fragments suitable for being included in your
+  remctld configuration are in the remctl subdirectory.  The kadmin
+  fragment provides the general interface.
 
   To set up the server for the passwd_change client, create a special
   designated principal in your Kerberos database, set the
@@ -110,10 +110,11 @@ INSTALLATION
   instance of remctl should be run with the KRB5_KTNAME environment
   variable set, pointing it at the keytab for this designated principal.
 
-  To build the passwd_change client, modify the settings at the top of the
-  passwd_change.c code to point it to the correct server and port and to
-  use the correct designated principal for the password changing service.
-  Then, run:
+  Before building the passwd_change client, you may want to modify the
+  settings at the top of the passwd_change.c code to point it to the
+  correct server and port and to use the correct designated principal for
+  the password changing service.  (If you don't, you'll have to always
+  have appropriate configuration in your krb5.conf file.)  Then, run:
 
       ./configure
       make
@@ -129,6 +130,10 @@ INSTALLATION
   If the remctl libraries aren't installed in a directory searched by the
   compiler, use --with-remctl to specify the root directory (prefix) under
   which remctl was installed.
+
+  After installation, you may want to configure passwd_change in your
+  krb5.conf files.  See the passwd_change man page for configuration
+  details.
 
   Normally, configure will use krb5-config to determine the flags to use
   to compile with your Kerberos libraries.  If krb5-config isn't found, it
