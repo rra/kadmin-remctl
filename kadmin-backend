@@ -485,11 +485,15 @@ sub examine_principal {
             }
             $k4output .= "account expiration: never\n";
             if ($output =~ /Last password change: (.*)/) {
-                $k4output .= "password last changed: $1\n";
+                my $date = $1;
+                $date =~ s/ \w{3} (\d{4})$/ $1/;
+                $k4output .= "password last changed: $date\n";
             }
             if ($output =~ /Last modified: ([^\(\n]+?)\s+\(([^\)\n]+)\)/) {
-                $k4output .= "modification time: $1\n";
-                $k4output .= "modified by: $2\n";
+                my ($date, $admin) = ($1, $2);
+                $date =~ s/ \w{3} (\d{4})$/ $1/;
+                $k4output .= "modification time: $date\n";
+                $k4output .= "modified by: $admin\n";
             }
         }
         $output = $k4output . "\n" . ('-' x 40) . "\n" . $output;
