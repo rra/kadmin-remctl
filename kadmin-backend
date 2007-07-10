@@ -596,7 +596,8 @@ sub instance_create {
         die "error: account $principal/$instance already exists\n";
     }
 
-    # Create the account in AD first so that password propagation works.
+    # Create the account in AD first so that password propagation works.  On
+    # failure, we'll try to remove it again.
     unless (ad_ldap_exists ($principal, $instance)) {
         ad_ldap_create ($principal, $instance, $password);
     }
@@ -611,20 +612,24 @@ sub instance_create {
     }
     my $k5admin = spawn_k5admin;
     unless ($k5admin->expect (2, 'kadmin:')) {
+        ad_ldap_delete ($principal, $instance);
         die "error: cannot talk to $K5_KADMIN\n";
     }
     $k5admin->send ("$command $principal/$instance\n");
     unless ($k5admin->expect (2, 'password for principal')) {
+        ad_ldap_delete ($principal, $instance);
         die "error: cannot talk to $K5_KADMIN\n";
     }
     $k5admin->send ("$password\n");
     unless ($k5admin->expect (2, 'password for principal')) {
+        ad_ldap_delete ($principal, $instance);
         die "error: cannot talk to $K5_KADMIN\n";
     }
     $k5admin->send ("$password\n");
     my ($num, $error, $match, $before, $after)
         = $k5admin->expect (2, 'add_principal: ', 'kadmin: ');
     if ($num == 1) {
+        ad_ldap_delete ($principal, $instance);
         $after =~ s/\r?\n.*//;
         warn "error: $after\n";
         $k5admin->send ("quit\n");
@@ -642,6 +647,9 @@ sub instance_delete {
     my ($principal, $instance) = @_;
     check_principal ($principal);
     check_instance ($instance);
+    if (ad_ldap_exists ($principal, $instance)) {
+        ad_ldap_delete ($principal, $instance);
+    }
     my $account = "$principal/$instance";
     my ($status, $output) = run_k5admin ("delete_principal -force $account");
     if ($status != 0 || $output =~ /^delete_principal: /) {
@@ -649,7 +657,6 @@ sub instance_delete {
         $output =~ s/\r?\n.*//;
         die "error: $output\n";
     }
-    ad_ldap_delete ($principal, $instance);
 }
 
 # List all accounts with a given instance.
