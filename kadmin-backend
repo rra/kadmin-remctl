@@ -1018,6 +1018,62 @@ one or more of the following keys:
 
 =over 2
 
+=item ad_config
+
+Points to an OpenLDAP configuration file that's used for propagation of
+instance creation into Active Directory.  If this key isn't set for an
+instance, no propagation into Active Directory will be attempted.  This
+configuration file should set the LDAP server and any other required
+properties.  An example:
+
+    URI ldaps://dc1.example.org/
+    BASE ou=accounts,dc=windows,dc=example,dc=org
+    TLS_CACERT /etc/krb5kdc/ad-root-cert
+    SASL_SECPROPS minssf=0,maxssf=0
+
+See L<ldap.conf(5)> for the available options.
+
+Only GSSAPI binds are supported by B<kadmin-backend> at this time.
+
+=item ad_keytab
+
+Points to a keytab used to obtain credentials for Active Directory
+modifications.  This keytab will be used with B<k5start> to obtain Kerberos
+credentials when running B<ldapadd> and B<ldapdelete>.  If ad_config is set,
+this key is required.
+
+=item ad_ldif
+
+Points to a Text::Template template file containing the complete LDIF required
+to create a new entry in Active Directory for an account with the given
+instance.  See L<Text::Template> for the details of the format, but mostly all
+you'll need to do is include strings like C<{$user}> into the file where you
+want to substitute in the username.  The available variables are:
+
+    user        The base username (without any instance)
+    instance    The instance of the account
+    password    The base64-encoded password for the account
+
+For example, this file may contain:
+
+    dn: cn={$user}/{$instance},ou=Accounts,dc=example,dc=org
+    objectClass: user
+    cn: {$user}/{$instance}
+    sAMAccountName: {$user}/{$instance}
+    userAccountControl: 512
+    unicodePwd:: {$password}
+    userPrincipalName: {$user}/{$instance}@EXAMPLE.ORG
+
+For account creation, the entire template is used.  For account deletion, only
+the line starting with C<dn:> is extracted and the contents, after template
+resolution, are used as the DN to delete from Active Directory.
+
+If you don't have TLS set up so that you can set unicodePwd over the LDAP
+interface, you can set userAccountControl to 544 to allow creation of the
+account without a password and then set the password later.  This may have
+security implications.  It's preferrable to set up the connection so that
+you can set unicodePwd at account creation.
+
 =item acl
 
 The value is the ACL file listing the principals that can manage instances
