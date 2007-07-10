@@ -227,8 +227,7 @@ sub ad_ldap_create {
         die "error: could not create LDIF: $Text::Template::ERROR\n";
     }
     my @command = ('k5start', '-Uqf', '/etc/krb5kdc/ad-keytab', '--',
-                   'ldapadd', '-v');
-    print "@command\n$result\n";
+                   'ldapadd', '-Q');
     my $pid = open (ADD, '|-', @command);
     unless ($pid) {
         die "error: cannot execute ldapadd: $!\n";
@@ -241,13 +240,36 @@ sub ad_ldap_create {
 }
 
 # Delete a user account out of Active Directory.  Takes the user and instance.
-# Currently, this hard-codes our schema; that needs to be fixed.
+# In order to figure out the dn, we read the dn: line out of the LDIF file for
+# this instance and then use Text::Template to build our DN.
 sub ad_ldap_delete {
     my ($user, $instance) = @_;
-    my $dn = "cn=${user}.${instance},ou=${instance},ou=Instances"
-        . ",ou=Accounts,dc=nt,dc=stanford,dc=edu";
+    my $source = $INSTANCES{$instance}{ldif};
+    open (SOURCE, '<', $source)
+        or die "error: cannot open $source: $!\n";
+    local $_;
+    my $dn;
+    while (<SOURCE>) {
+        next unless /^dn:\s+/;
+        $dn = $_;
+        while (<SOURCE>) {
+            last unless /^\s/;
+            s/^\s+//;
+            $dn .= $_;
+        }
+    }
+    close SOURCE;
+    die "error: cannot determine account DN for delete\n"
+        unless $dn;
+    my $template = Text::Template->new (TYPE => 'STRING', SOURCE => $dn)
+        or die "error: cannot build DN template: $Text::Template::ERROR\n";
+    my %vars = (user => $user, instance => $instance);
+    my $dn = $template->fill_in (HASH => \%vars);
+    unless (defined $dn) {
+        die "error: cannot create DN: $Text::Template::ERROR\n";
+    }
     my @command = ('k5start', '-Uqf', '/etc/krb5kdc/ad-keytab', '--',
-                   'ldapdelete', '-v');
+                   'ldapdelete', '-Q');
     system (@command, $dn) == 0
         or die "error: ldapdelete of account in AD failed\n";
 }
