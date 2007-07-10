@@ -34,9 +34,6 @@ use Text::Template ();
 # Disable sending of kadmin's output to our standard output.
 $Expect::Log_Stdout = 0;
 
-# Temporary hack.
-$ENV{LDAPCONF} = '/etc/krb5kdc/ldap.conf';
-
 # K4 OPTIONS (set $K4_KADMIN to undef to disable K4)
 our $K4_KADMIN = undef;
 our $K4_PRINC  = undef;
@@ -69,10 +66,12 @@ our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
 # Instance configuration.  Each key in this hash is an instance.  Each value
 # is a hash with the following key/value pairs:
 #
-#     acl      => file listing principals that can manage this instance
-#     checking => true if we should enable password strength checking
-#     ldif     => Text::Template template used for account creation
-#     reset    => true if we should allow password resets
+#     ad_config => OpenLDAP config file for AD LDAP commands
+#     ad_keytab => Keytab containing credentials for AD authentication
+#     ad_ldif   => Text::Template LDIF file used for AD account changes
+#     acl       => File listing principals that can manage this instance
+#     checking  => True if we should enable password strength checking
+#     reset     => True if we should allow password resets
 #
 # No instances are configured by default.
 our %INSTANCES  = ();
@@ -197,6 +196,22 @@ sub run_k5admin {
 # Active Directory LDAP functions
 ##############################################################################
 
+# Check the configuration for Active Directory and make changes as needed for
+# a particular instance.  Does nothing if the ad_config attribute isn't set in
+# the instance hash.
+sub ad_config {
+    my ($instance) = @_;
+    return unless $INSTANCES{$instance}{ad_config};
+    die "error: no LDIF configured for AD account changes\n"
+        unless $INSTANCES{$instance}{ad_ldif};
+    die "error: no keytab configured for AD account changes\n"
+        unless $INSTANCES{$instance}{ad_keytab};
+    my $config = $INSTANCES{$instance}{ad_config};
+    if (!$ENV{LDAPCONF} || $ENV{LDAPCONF} ne $config) {
+        $ENV{LDAPCONF} = $config;
+    }
+}
+
 # Check whether an account already exists in Active Directory.  Takes the
 # user and the instance and returns true if the user exists, false otherwise.
 sub ad_ldap_exists {
@@ -204,6 +219,7 @@ sub ad_ldap_exists {
     if ($user =~ /[\'\\]/) {
         die "error: invalid user name $user\n";
     }
+    ad_config ($instance);
     my @command = ('k5start', '-Uqf', '/etc/krb5kdc/ad-keytab', '--',
                    'ldapsearch', '-Q', '-LLL');
     my $output = `@command samaccountname=${user}.${instance}`;
@@ -214,7 +230,8 @@ sub ad_ldap_exists {
 # Text::Template template to create the LDIF and then passing that to ldapadd.
 sub ad_ldap_create {
     my ($user, $instance, $password) = @_;
-    my $source = $INSTANCES{$instance}{ldif};
+    ad_config ($instance);
+    my $source = $INSTANCES{$instance}{ad_ldif};
     my $template = Text::Template->new (TYPE => 'FILE', SOURCE => $source)
         or die "error: could not create LDIF: $Text::Template::ERROR\n";
     my $b64pass = encode_base64 (qq{"$password"});
@@ -226,7 +243,7 @@ sub ad_ldap_create {
     unless (defined $result) {
         die "error: could not create LDIF: $Text::Template::ERROR\n";
     }
-    my @command = ('k5start', '-Uqf', '/etc/krb5kdc/ad-keytab', '--',
+    my @command = ('k5start', '-Uqf', $INSTANCES{$instance}{ad_keytab}, '--',
                    'ldapadd', '-Q');
     my $pid = open (ADD, '|-', @command);
     unless ($pid) {
@@ -244,6 +261,7 @@ sub ad_ldap_create {
 # this instance and then use Text::Template to build our DN.
 sub ad_ldap_delete {
     my ($user, $instance) = @_;
+    ad_config ($instance);
     my $source = $INSTANCES{$instance}{ldif};
     open (SOURCE, '<', $source)
         or die "error: cannot open $source: $!\n";
@@ -264,11 +282,11 @@ sub ad_ldap_delete {
     my $template = Text::Template->new (TYPE => 'STRING', SOURCE => $dn)
         or die "error: cannot build DN template: $Text::Template::ERROR\n";
     my %vars = (user => $user, instance => $instance);
-    my $dn = $template->fill_in (HASH => \%vars);
+    $dn = $template->fill_in (HASH => \%vars);
     unless (defined $dn) {
         die "error: cannot create DN: $Text::Template::ERROR\n";
     }
-    my @command = ('k5start', '-Uqf', '/etc/krb5kdc/ad-keytab', '--',
+    my @command = ('k5start', '-Uqf', $INSTANCES{$instance}{ad_keytab}, '--',
                    'ldapdelete', '-Q');
     system (@command, $dn) == 0
         or die "error: ldapdelete of account in AD failed\n";
