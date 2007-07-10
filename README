@@ -68,6 +68,13 @@ REQUIREMENTS
   to be modified at other sites that need to synchronize with Kerberos
   v4.)  The Kerberos v4 synchronization is disabled by default.
 
+  The kadmin backend can propagate instance creation and deletion to an
+  Active Directory.  To use this support, you will need the Text::Template
+  Perl module installed and will need k5start and the OpenLDAP binaries
+  ldapadd, ldapdelete, and ldapmodify.  You can get k5start from:
+
+      <http://www.eyrie.org/~eagle/software/kstart/>
+
   The passwd_change C client requires the C libremctl library be available
   to build (plus, obviously, a C compiler).  It also requires a Kerberos
   library; either MIT Kerberos or Heimdal should be sufficiant (although

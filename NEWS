@@ -2,6 +2,9 @@
 
 kadmin-remctl 1.5 (unreleased)
 
+    Add support for propagation of instance creation and deletion into
+    Active Directory.
+
     When faking Kerberos v4 examine output in kadmin-backend, strip the
     time zone information from the Kerberos v5 timestamps.  Kerberos v4
     kadmin examine didn't include time zone information.
