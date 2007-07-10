@@ -28,9 +28,14 @@ our $ID = q$Id$;
 use strict;
 
 use Expect ();
+use MIME::Base64 qw(encode_base64);
+use Text::Template ();
 
 # Disable sending of kadmin's output to our standard output.
 $Expect::Log_Stdout = 0;
+
+# Temporary hack.
+$ENV{LDAPCONF} = '/etc/krb5kdc/ldap.conf';
 
 # K4 OPTIONS (set $K4_KADMIN to undef to disable K4)
 our $K4_KADMIN = undef;
@@ -66,6 +71,7 @@ our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
 #
 #     acl      => file listing principals that can manage this instance
 #     checking => true if we should enable password strength checking
+#     ldif     => Text::Template template used for account creation
 #     reset    => true if we should allow password resets
 #
 # No instances are configured by default.
@@ -185,6 +191,65 @@ sub run_k5admin {
     close K5ADMIN;
     my $status = ($? >> 8);
     return wantarray ? ($status, join ('', @output)) : $status;
+}
+
+##############################################################################
+# Active Directory LDAP functions
+##############################################################################
+
+# Check whether an account already exists in Active Directory.  Takes the
+# user and the instance and returns true if the user exists, false otherwise.
+sub ad_ldap_exists {
+    my ($user, $instance) = @_;
+    if ($user =~ /[\'\\]/) {
+        die "error: invalid user name $user\n";
+    }
+    my @command = ('k5start', '-Uqf', '/etc/krb5kdc/ad-keytab', '--',
+                   'ldapsearch', '-Q', '-LLL');
+    my $output = `@command samaccountname=${user}.${instance}`;
+    return ($output ne '') ? 1 : undef;
+}
+
+# Create a new user account in Active Directory by instantiating the
+# Text::Template template to create the LDIF and then passing that to ldapadd.
+sub ad_ldap_create {
+    my ($user, $instance, $password) = @_;
+    my $source = $INSTANCES{$instance}{ldif};
+    my $template = Text::Template->new (TYPE => 'FILE', SOURCE => $source)
+        or die "error: could not create LDIF: $Text::Template::ERROR\n";
+    my $b64pass = encode_base64 (qq{"$password"});
+    chomp $b64pass;
+    my %vars = (user     => $user,
+                instance => $instance,
+                password => $b64pass);
+    my $result = $template->fill_in (HASH => \%vars);
+    unless (defined $result) {
+        die "error: could not create LDIF: $Text::Template::ERROR\n";
+    }
+    my @command = ('k5start', '-Uqf', '/etc/krb5kdc/ad-keytab', '--',
+                   'ldapadd', '-v');
+    print "@command\n$result\n";
+    my $pid = open (ADD, '|-', @command);
+    unless ($pid) {
+        die "error: cannot execute ldapadd: $!\n";
+    }
+    print ADD $result;
+    close ADD;
+    if ($? != 0) {
+        die "error: ldapadd of account to AD failed: $?\n";
+    }
+}
+
+# Delete a user account out of Active Directory.  Takes the user and instance.
+# Currently, this hard-codes our schema; that needs to be fixed.
+sub ad_ldap_delete {
+    my ($user, $instance) = @_;
+    my $dn = "cn=${user}.${instance},ou=${instance},ou=Instances"
+        . ",ou=Accounts,dc=nt,dc=stanford,dc=edu";
+    my @command = ('k5start', '-Uqf', '/etc/krb5kdc/ad-keytab', '--',
+                   'ldapdelete', '-v');
+    system (@command, $dn) == 0
+        or die "error: ldapdelete of account in AD failed\n";
 }
 
 ##############################################################################
@@ -531,6 +596,11 @@ sub instance_create {
         die "error: account $principal/$instance already exists\n";
     }
 
+    # Create the account in AD first so that password propagation works.
+    unless (ad_ldap_exists ($principal, $instance)) {
+        ad_ldap_create ($principal, $instance, $password);
+    }
+
     # Do the account creation.  There is some code duplication with regular
     # account creation here.
     my $command = 'add_principal +requires_preauth';
@@ -579,6 +649,7 @@ sub instance_delete {
         $output =~ s/\r?\n.*//;
         die "error: $output\n";
     }
+    ad_ldap_delete ($principal, $instance);
 }
 
 # List all accounts with a given instance.
