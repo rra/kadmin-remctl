@@ -198,7 +198,8 @@ sub run_k5admin {
 
 # Check the configuration for Active Directory and make changes as needed for
 # a particular instance.  Does nothing if the ad_config attribute isn't set in
-# the instance hash.
+# the instance hash.  Returns true if AD propagation is configured for that
+# instance, false otherwise.
 sub ad_config {
     my ($instance) = @_;
     return unless $INSTANCES{$instance}{ad_config};
@@ -210,6 +211,7 @@ sub ad_config {
     if (!$ENV{LDAPCONF} || $ENV{LDAPCONF} ne $config) {
         $ENV{LDAPCONF} = $config;
     }
+    return 1;
 }
 
 # Check whether an account already exists in Active Directory.  Takes the
@@ -219,7 +221,7 @@ sub ad_ldap_exists {
     if ($user =~ /[\'\\]/) {
         die "error: invalid user name $user\n";
     }
-    ad_config ($instance);
+    ad_config ($instance) or return;
     my @command = ('k5start', '-Uqf', '/etc/krb5kdc/ad-keytab', '--',
                    'ldapsearch', '-Q', '-LLL');
     my $output = `@command samaccountname=${user}.${instance}`;
@@ -230,7 +232,7 @@ sub ad_ldap_exists {
 # Text::Template template to create the LDIF and then passing that to ldapadd.
 sub ad_ldap_create {
     my ($user, $instance, $password) = @_;
-    ad_config ($instance);
+    ad_config ($instance) or return;
     my $source = $INSTANCES{$instance}{ad_ldif};
     my $template = Text::Template->new (TYPE => 'FILE', SOURCE => $source)
         or die "error: could not create LDIF: $Text::Template::ERROR\n";
@@ -261,7 +263,7 @@ sub ad_ldap_create {
 # this instance and then use Text::Template to build our DN.
 sub ad_ldap_delete {
     my ($user, $instance) = @_;
-    ad_config ($instance);
+    ad_config ($instance) or return;
     my $source = $INSTANCES{$instance}{ldif};
     open (SOURCE, '<', $source)
         or die "error: cannot open $source: $!\n";
