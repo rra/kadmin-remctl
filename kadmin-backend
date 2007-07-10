@@ -63,6 +63,14 @@ our $RESET_ACL  = '/etc/leland/remctl/kadmin-reset.acl';
 # Reserved principal names.
 our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
 
+# Used for Active Directory instance propagation.  The paths to k5start,
+# ldapadd, ldapdelete, and ldapmodify respectively.  By default, we search the
+# current PATH.
+our $K5START    = 'k5start';
+our $LDAPADD    = 'ldapadd';
+our $LDAPDELETE = 'ldapdelete';
+our $LDAPSEARCH = 'ldapsearch';
+
 # Instance configuration.  Each key in this hash is an instance.  Each value
 # is a hash with the following key/value pairs:
 #
@@ -222,8 +230,8 @@ sub ad_ldap_exists {
         die "error: invalid user name $user\n";
     }
     ad_config ($instance) or return;
-    my @command = ('k5start', '-Uqf', '/etc/krb5kdc/ad-keytab', '--',
-                   'ldapsearch', '-Q', '-LLL');
+    my @command = ($K5START, '-Uqf', $INSTANCES{$instance}{ad_keytab}, '--',
+                   $LDAPSEARCH, '-Q', '-LLL');
     my $output = `@command samaccountname=${user}.${instance}`;
     return ($output ne '') ? 1 : undef;
 }
@@ -245,8 +253,8 @@ sub ad_ldap_create {
     unless (defined $result) {
         die "error: could not create LDIF: $Text::Template::ERROR\n";
     }
-    my @command = ('k5start', '-Uqf', $INSTANCES{$instance}{ad_keytab}, '--',
-                   'ldapadd', '-Q');
+    my @command = ($K5START, '-Uqf', $INSTANCES{$instance}{ad_keytab}, '--',
+                   $LDAPADD, '-Q');
     my $pid = open (ADD, '|-', @command);
     unless ($pid) {
         die "error: cannot execute ldapadd: $!\n";
@@ -288,8 +296,8 @@ sub ad_ldap_delete {
     unless (defined $dn) {
         die "error: cannot create DN: $Text::Template::ERROR\n";
     }
-    my @command = ('k5start', '-Uqf', $INSTANCES{$instance}{ad_keytab}, '--',
-                   'ldapdelete', '-Q');
+    my @command = ($K5START, '-Uqf', $INSTANCES{$instance}{ad_keytab}, '--',
+                   $LDAPDELETE, '-Q');
     system (@command, $dn) == 0
         or die "error: ldapdelete of account in AD failed\n";
 }
@@ -1141,6 +1149,30 @@ Keytab to use for authentication of Kerberos v5 B<kadmin> operations.
 Path to B<kasetkey>, used to make changes to an AFS kaserver that can't be
 done via the Kerberos v4 B<kadmin> program.
 
+=item $K5START
+
+Path to B<k5start>, used to obtain credentials when propagating accounts
+into Active Directory.  By default, B<kadmin-backend> searches the PATH for
+the first B<k5start> binary found.
+
+=item $LDAPADD
+
+Path to B<ldapadd>, used to create new accounts in Active Directory.  By
+default, B<kadmin-backend> searches the PATH for the first B<ldapadd> binary
+found.
+
+=item $LDAPDELETE
+
+Path to B<ldapdelete>, used to obtain credentials when deleting accounts
+from Active Directory.  By default, B<kadmin-backend> searches the PATH for
+the first B<ldapdelete> binary found.
+
+=item $LDAPSEARCH
+
+Path to B<ldapsearch>, used to check whether an account already exists in
+Active Directory.  By default, B<kadmin-backend> searches the PATH
+for the first B<ldapsearch> binary found.
+
 =item %RESERVED
 
 A hash of reserved principal names (without instances).  The keys are the
@@ -1171,6 +1203,10 @@ anything they choose.
 =back
 
 For the defaults, see the beginning of the kadmin-backend script.
+
+=head1 SEE ALSO
+
+k5start(1), ldap.conf(5), ldapadd(1), ldapdelete(1), ldapsearch(1)
 
 =head1 AUTHOR
 
