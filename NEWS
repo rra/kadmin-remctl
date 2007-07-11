@@ -2,6 +2,9 @@
 
 kadmin-remctl 1.6 (unreleased)
 
+    Use the correct configuration key when reading the LDIF file to find
+    the DN for deleting instances.
+
     When listing instances, add a wildcard after the instance pattern
     rather than letting kadmin append the local realm so that we can use
     the same code on development servers that may be serving different

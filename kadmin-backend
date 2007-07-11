@@ -272,7 +272,7 @@ sub ad_ldap_create {
 sub ad_ldap_delete {
     my ($user, $instance) = @_;
     ad_config ($instance) or return;
-    my $source = $INSTANCES{$instance}{ldif};
+    my $source = $INSTANCES{$instance}{ad_ldif};
     open (SOURCE, '<', $source)
         or die "error: cannot open $source: $!\n";
     local $_;
