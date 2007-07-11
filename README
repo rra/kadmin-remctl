@@ -59,19 +59,19 @@ DESCRIPTION
 
 REQUIREMENTS
 
-  The kadmin backend is written in Perl and requires the Perl Expect
-  module.  It calls the Kerberos v5 kadmin and kpasswd programs and
-  therefore requires that they be available.  For integration with the AFS
-  kaserver Kerberos v4 realm, it can also use kasetkey and a Kerberos v4
-  kadmin client available.  (The Kerberos v4 kadmin client is an
-  unreleased internal Stanford client, so this part of the code would need
-  to be modified at other sites that need to synchronize with Kerberos
-  v4.)  The Kerberos v4 synchronization is disabled by default.
+  The kadmin backend is written in Perl and requires the Perl Expect and
+  Text::Template modules.  It calls the Kerberos v5 kadmin and kpasswd
+  programs and therefore requires that they be available.  For integration
+  with the AFS kaserver Kerberos v4 realm, it can also use kasetkey and a
+  Kerberos v4 kadmin client available.  (The Kerberos v4 kadmin client is
+  an unreleased internal Stanford client, so this part of the code would
+  need to be modified at other sites that need to synchronize with
+  Kerberos v4.)  The Kerberos v4 synchronization is disabled by default.
 
   The kadmin backend can propagate instance creation and deletion to an
-  Active Directory.  To use this support, you will need the Text::Template
-  Perl module installed and will need k5start and the OpenLDAP binaries
-  ldapadd, ldapdelete, and ldapmodify.  You can get k5start from:
+  Active Directory.  To use this support, you will need k5start and the
+  OpenLDAP binaries ldapadd, ldapdelete, and ldapmodify.  You can get
+  k5start from:
 
       <http://www.eyrie.org/~eagle/software/kstart/>
 
