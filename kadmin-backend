@@ -289,6 +289,8 @@ sub ad_ldap_delete {
     close SOURCE;
     die "error: cannot determine account DN for delete\n"
         unless $dn;
+    $dn =~ s/^dn: //;
+    $dn =~ s/\s+$//;
     my $template = Text::Template->new (TYPE => 'STRING', SOURCE => $dn)
         or die "error: cannot build DN template: $Text::Template::ERROR\n";
     my %vars = (user => $user, instance => $instance);
