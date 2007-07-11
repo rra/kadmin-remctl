@@ -5,6 +5,22 @@
    That script needs another layer of abstraction with generic account
    creation, deletion, and password reset functions.
 
+ * kadmin-remctl currently supports instance propagation as a special
+   case.  Instead, refactor the code so that the same propagation can be
+   done for regular accounts with a similar configuration.
+
+ * Rather than make password strength checking a boolean and hard-coding
+   the policy name, have the password strength checking option take the
+   name of the password policy to use.
+
+ * kadmin-remctl should use Net::LDAP or Net::LDAPapi rather than calling
+   the external OpenLDAP utilities.
+
+ * The current kadmin-remctl API is rather lame and is only used for
+   historical reasons at Stanford.  Introduce a new, cleaner API with
+   better structure to the error reporting and replace the current API
+   with that.
+
  * There should be an easier way of setting defaults for passwd_change
    than patching it at run-time, even though it also supports krb5.conf
    parameters.
