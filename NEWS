@@ -1,5 +1,12 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 1.6 (unreleased)
+
+    When listing instances, add a wildcard after the instance pattern
+    rather than letting kadmin append the local realm so that we can use
+    the same code on development servers that may be serving different
+    realms than the local realm.
+
 kadmin-remctl 1.5 (2007-07-11)
 
     Add support for propagation of instance creation and deletion into

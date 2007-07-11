@@ -713,7 +713,7 @@ sub instance_delete {
 sub instance_list {
     my ($instance) = @_;
     check_instance ($instance);
-    my ($status, $output) = run_k5admin ("list_principals */$instance");
+    my ($status, $output) = run_k5admin ("list_principals */$instance@*");
     if ($status != 0 || $output =~ /^list_principals: /) {
         $output =~ s/^list_principals: //;
         $output =~ s/\r?\n.*//;
