@@ -4,8 +4,9 @@ kadmin-remctl (1.5-1) unstable; urgency=low
     - Add support for instance propagation to Active Directory.
     - Fix time zone problems with K4 output faking.
     - Fix configuration details in passwd_change documentation.
+  * Update debhelper compatibility level to V5 (no changes required).
 
- -- Russ Allbery <rra@debian.org>  Wed, 11 Jul 2007 10:15:14 -0700
+ -- Russ Allbery <rra@debian.org>  Wed, 11 Jul 2007 10:16:03 -0700
 
 kadmin-remctl (1.4-1) unstable; urgency=low
 

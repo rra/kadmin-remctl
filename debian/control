@@ -2,7 +2,7 @@ Source: kadmin-remctl
 Section: net
 Priority: extra
 Maintainer: Russ Allbery <rra@debian.org>
-Build-Depends: debhelper (>= 4), perl, libremctl-dev, libkrb5-dev, comerr-dev
+Build-Depends: debhelper (>= 5), perl, libremctl-dev, libkrb5-dev, comerr-dev
 Standards-Version: 3.7.2
 
 Package: kadmin-remctl
