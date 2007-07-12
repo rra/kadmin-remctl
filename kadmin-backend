@@ -28,8 +28,6 @@ our $ID = q$Id$;
 use strict;
 
 use Expect ();
-use MIME::Base64 qw(encode_base64);
-use Text::Template ();
 
 # Disable sending of kadmin's output to our standard output.
 $Expect::Log_Stdout = 0;
@@ -219,6 +217,11 @@ sub ad_config {
     if (!$ENV{LDAPCONF} || $ENV{LDAPCONF} ne $config) {
         $ENV{LDAPCONF} = $config;
     }
+    require Encode;
+    require MIME::Base64;
+    require Text::Template;
+    import Encode 'encode';
+    import MIME::Base64 'encode_base64';
     return 1;
 }
 
@@ -244,7 +247,7 @@ sub ad_ldap_create {
     my $source = $INSTANCES{$instance}{ad_ldif};
     my $template = Text::Template->new (TYPE => 'FILE', SOURCE => $source)
         or die "error: could not create LDIF: $Text::Template::ERROR\n";
-    my $b64pass = encode_base64 (qq{"$password"});
+    my $b64pass = encode_base64 (encode ('ucs-2le', qq{"$password"}));
     chomp $b64pass;
     my %vars = (user     => $user,
                 instance => $instance,
@@ -596,9 +599,9 @@ sub examine_principal {
             $k4output = 'error: No such entry in the database';
         } else {
             if ($output =~ /DISALLOW_ALL_TIX/) {
-                $k4output = "status: disabled\n";
+                $k4output = "retstr: status: disabled\n";
             } else {
-                $k4output = "status: enabled\n";
+                $k4output = "retstr: status: enabled\n";
             }
             $k4output .= "account expiration: never\n";
             if ($output =~ /Last password change: (.*)/) {
@@ -615,7 +618,7 @@ sub examine_principal {
         }
         $output = $k4output . "\n" . ('-' x 40) . "\n" . $output;
     }
-    print "retstr: $output";
+    print "$output";
 }
 
 ##############################################################################

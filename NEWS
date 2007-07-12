@@ -6,10 +6,19 @@ kadmin-remctl 1.6 (unreleased)
     the DN for deleting instances and extract just the DN rather than
     keeping the "dn: " prefix.
 
+    Active Directory expects passwords to be encoded in UCS-2LE.  Change
+    the password provided to the LDIF template to match those expectations
+    and move the modules needed for talking to Active Directory to
+    require statements from use statements so that those Perl modules
+    aren't required unless Active Directory integration is desired.
+
     When listing instances, add a wildcard after the instance pattern
     rather than letting kadmin append the local realm so that we can use
     the same code on development servers that may be serving different
     realms than the local realm.
+
+    Kerberos v4 examine output faking was prepending "retstr: " even to
+    error messages.  Drop "retstr: " when there is an error.
 
 kadmin-remctl 1.5 (2007-07-11)
 
