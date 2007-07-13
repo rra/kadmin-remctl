@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 1.6 (unreleased)
+kadmin-remctl 1.6 (2007-07-13)
 
     Use the correct configuration key when reading the LDIF file to find
     the DN for deleting instances and extract just the DN rather than
