@@ -461,7 +461,9 @@ sub create_principal {
     check_password ($password);
     my (undef, $output) = run_k5admin ("getprinc $principal");
     if ($output !~ /does not exist/) {
-        die "error: account $principal already exists\n";
+        warn "error: account $principal already exists\n";
+        print "retstr: account $principal already exists\n";
+        exit 1;
     }
     if ($K4_KADMIN) {
         my $code = system ($KASETKEY, '-k', $K4_KEY, '-a', $K4_ADMIN, '-r',
