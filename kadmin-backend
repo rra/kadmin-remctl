@@ -501,9 +501,11 @@ sub create_principal {
         = $k5admin->expect (2, 'add_principal: ', 'kadmin: ');
     if ($num == 1) {
         $after =~ s/\r?\n.*//;
+        warn "retstr: $after\n";
         print "retstr: $after\n";
-        $k5admin->send ("quit\n");
-        $k5admin->soft_close;
+        exit 1;
+    } elsif ($error) {
+        die "error: Expect said $error\n";
     } else {
         $k5admin->send ("quit\n");
         $k5admin->soft_close;

@@ -17,6 +17,9 @@ kadmin-remctl 1.6 (2007-07-13)
     the same code on development servers that may be serving different
     realms than the local realm.
 
+    Correctly handle errors on account creation in kadmin-backend.  It was
+    treating all Kerberos errors as success.
+
     Kerberos v4 examine output faking was prepending "retstr: " even to
     error messages.  Drop "retstr: " when there is an error.
 
