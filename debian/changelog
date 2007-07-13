@@ -1,3 +1,13 @@
+kadmin-remctl (1.6-1) unstable; urgency=low
+
+  * New upstream release.
+    - Fix problems with deleting instances from Active Directory.
+    - Correctly encode the Active Directory unicodePwd field.
+    - Support listing instances in foreign realms.
+    - Fix kadmin examine output when K4 output faking is enabled.
+
+ -- Russ Allbery <rra@debian.org>  Fri, 13 Jul 2007 10:33:23 -0700
+
 kadmin-remctl (1.5-1) unstable; urgency=low
 
   * New upstream release.
