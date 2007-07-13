@@ -24,3 +24,8 @@
  * There should be an easier way of setting defaults for passwd_change
    than patching it at run-time, even though it also supports krb5.conf
    parameters.
+
+ * kadmin-backend's check_passwd option could use the username to check
+   other things, such as whether the password is based on the username
+   and whether the user is reusing their current password (although it
+   still couldn't be guaranteed to match every error from change_passwd).
