@@ -20,6 +20,10 @@ kadmin-remctl 1.6 (2007-07-13)
     Kerberos v4 examine output faking was prepending "retstr: " even to
     error messages.  Drop "retstr: " when there is an error.
 
+    Standardize across the non-instance functions of kadmin-backend the
+    ordering of error and retstr messages and return retstr for the case
+    of creating an account that already exists instead of just error.
+
 kadmin-remctl 1.5 (2007-07-11)
 
     Add support for propagation of instance creation and deletion into
