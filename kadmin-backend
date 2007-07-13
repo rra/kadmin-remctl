@@ -501,7 +501,7 @@ sub create_principal {
         = $k5admin->expect (2, 'add_principal: ', 'kadmin: ');
     if ($num == 1) {
         $after =~ s/\r?\n.*//;
-        warn "retstr: $after\n";
+        warn "error: $after\n";
         print "retstr: $after\n";
         exit 1;
     } elsif ($error) {
@@ -527,7 +527,9 @@ sub delete_principal {
     if ($status != 0 || $output =~ /^delete_principal: /) {
         $output =~ s/^delete_principal: //;
         $output =~ s/\r?\n.*//;
-        die "error: $output\n";
+        warn "error: $output\n";
+        print "retstr: $output\n";
+        exit 1;
     }
 }
 
