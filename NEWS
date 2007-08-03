@@ -1,5 +1,11 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 1.7 (unreleased)
+
+    Add the $K5_HOST configuration variable to kadmin-backend which, if
+    set, tells kadmin-backend to contact the given kadmin server instead
+    of the default for the local realm.
+
 kadmin-remctl 1.6 (2007-07-13)
 
     Use the correct configuration key when reading the LDIF file to find

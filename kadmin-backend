@@ -44,6 +44,7 @@ our $K5_KADMIN  = '/usr/local/sbin/k5admin';
 our $K5_KPASSWD = '/usr/local/bin/kpasswd';
 our $K5_PRINC   = 'service/lsdb';
 our $K5_KEYTAB  = '/etc/leland/keytab.lsdb';
+our $K5_HOST    = undef;
 
 # Set this option to fake K4 examine output based on the K5 data.  This is
 # only for backward compatibility for some systems at Stanford.
@@ -167,6 +168,7 @@ sub check_password {
 # Spawn a conversation with k5admin and return an Expect object.
 sub spawn_k5admin {
     my @args = ('-p', $K5_PRINC, '-k', '-t', $K5_KEYTAB);
+    push (@args, '-s', $K5_HOST) if $K5_HOST;
     my $k5admin = Expect->spawn ($K5_KADMIN, @args);
     unless ($k5admin) {
         die "error: cannot run $K5_KADMIN\n";
@@ -180,6 +182,7 @@ sub spawn_k5admin {
 sub run_k5admin {
     my ($command) = @_;
     my @args = ('-p', $K5_PRINC, '-k', '-t', $K5_KEYTAB, '-q', $command);
+    push (@args, '-s', $K5_HOST) if $K5_HOST;
     my $pid = open (K5ADMIN, '-|');
     if (not defined $pid) {
         die "error: cannot fork: $!\n";
@@ -1159,6 +1162,12 @@ Principal to use for authentication of Kerberos v5 B<kadmin> operations.
 =item $K5_KEYTAB
 
 Keytab to use for authentication of Kerberos v5 B<kadmin> operations.
+
+=item $K5_HOST
+
+If set, pass this argument to Kerberos v5 B<kadmin> via the B<-s> flag to tell
+it to use a different admin server.  Mostly useful for testing to point
+B<kadmin-backend> at a different kadmin server.
 
 =item $KASETKEY
 
