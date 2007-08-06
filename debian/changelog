@@ -1,3 +1,10 @@
+kadmin-remctl (1.7-1) unstable; urgency=low
+
+  * New upstream release.
+    - Support a $K5_HOST variable to use a non-default admin server.
+
+ -- Russ Allbery <rra@debian.org>  Mon, 06 Aug 2007 16:57:24 -0700
+
 kadmin-remctl (1.6-1) unstable; urgency=low
 
   * New upstream release.
