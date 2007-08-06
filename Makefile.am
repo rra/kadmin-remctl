@@ -25,6 +25,11 @@ $(srcdir)/kadmin-backend.8: $(srcdir)/kadmin-backend
 	pod2man --release=$(VERSION) --center="Administrative Commands" \
 	    --section=8 $(srcdir)/kadmin-backend > $@
 
+# Make maintainer-clean do the right thing rather than what GNU thinks it
+# should do.
+MAINTAINERCLEANFILES = Makefile.in aclocal.m4 config.h.in config.h.in~ \
+	configure passwd_change.1 kadmin-backend.8
+
 # A set of flags for warnings.  Add -O because gcc won't find some warnings
 # without optimization turned on, and add -DDEBUG=1 so we'll also compile all
 # debugging code and test it.
