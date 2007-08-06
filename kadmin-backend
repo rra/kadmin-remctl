@@ -27,6 +27,9 @@ our $ID = q$Id$;
 
 use strict;
 
+# Needed only for ancient Perl.
+use vars qw($ID);
+
 use Expect ();
 
 # Disable sending of kadmin's output to our standard output.
@@ -786,6 +789,9 @@ sub instance_reset {
 ##############################################################################
 # Main routine
 ##############################################################################
+
+# Flush all output immediately, since old Perl doesn't do this for us.
+$| = 1;
 
 my $cmd = shift;
 

@@ -6,6 +6,9 @@ kadmin-remctl 1.7 (unreleased)
     set, tells kadmin-backend to contact the given kadmin server instead
     of the default for the local realm.
 
+    Tweak kadmin-backend slightly so that it runs properly with Perl
+    5.6.1 without warnings.
+
 kadmin-remctl 1.6 (2007-07-13)
 
     Use the correct configuration key when reading the LDIF file to find
