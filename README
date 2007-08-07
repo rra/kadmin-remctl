@@ -10,12 +10,13 @@
 BLURB
 
   kadmin-remctl provides a remctl backend that implements basic Kerberos
-  account administration functions (create, delete, enable, disable, reset
-  password, examine) plus user password changes and a call to
-  strength-check a given password.  These functions also synchronize
-  changes with an AFS kaserver where appropriate.  Also included is a
-  client for privileged users to use for password resets.  Many of the
-  defaults and namespace checks are Stanford-specific, but it can be
+  account administration functions (create, delete, enable, disable,
+  reset password, examine) plus user password changes and a call to
+  strength-check a given password.  It can also provide similar management
+  of instances and creation, deletion, and management of accounts in
+  Active Directory and an AFS kaserver where appropriate.  Also included
+  is a client for privileged users to use for password resets.  Many of
+  the defaults and namespace checks are Stanford-specific, but it can be
   modified for other sites.
 
 DESCRIPTION
@@ -34,8 +35,8 @@ DESCRIPTION
   This package includes the kadmin backend, a Perl script that supports
   creating, deleting, enabling, and disabling accounts, changing or
   resetting passwords, and checking password strength.  This script does
-  synchronization in an AFS kaserver Kerberos v4 realm as well where
-  appropriate.
+  synchronization to Active Directory and an AFS kaserver Kerberos v4
+  realm as well where appropriate.
 
   Also included in this package is a C client for use by privileged users
   when changing passwords for others.  This client searches for the user
@@ -59,17 +60,20 @@ DESCRIPTION
 
 REQUIREMENTS
 
-  The kadmin backend is written in Perl and requires the Perl Expect and
-  Text::Template modules.  It calls the Kerberos v5 kadmin and kpasswd
-  programs and therefore requires that they be available.  For integration
-  with the AFS kaserver Kerberos v4 realm, it can also use kasetkey and a
-  Kerberos v4 kadmin client available.  (The Kerberos v4 kadmin client is
-  an unreleased internal Stanford client, so this part of the code would
-  need to be modified at other sites that need to synchronize with
-  Kerberos v4.)  The Kerberos v4 synchronization is disabled by default.
+  The kadmin backend is written in Perl and requires the Perl Expect
+  module.  It calls the Kerberos v5 kadmin and kpasswd programs and
+  therefore requires that they be available.  For integration with the AFS
+  kaserver Kerberos v4 realm, it can also use kasetkey and a Kerberos v4
+  kadmin client.  (The Kerberos v4 kadmin client is an unreleased internal
+  Stanford client, so this part of the code would need to be modified at
+  other sites that need to synchronize with Kerberos v4.  A stock Kerberos
+  v4 kadmin client may not work.)  The Kerberos v4 synchronization is
+  disabled by default.
 
   The kadmin backend can propagate instance creation and deletion to an
-  Active Directory.  To use this support, you will need k5start and the
+  Active Directory.  To use this support, you will need the Perl Encode,
+  MIME::Base64, and Text::Template modules.  (Encode and MIME::Base64
+  come with Perl 5.8 and later.)  You will also need k5start and the
   OpenLDAP binaries ldapadd, ldapdelete, and ldapmodify.  You can get
   k5start from:
 
