@@ -1,5 +1,15 @@
                          kadmin-remctl To-Do List
 
+ * Talking to kadmin and kpasswd via Expect is obviously an ugly hack only
+   done because it was expedient.  We should instead be using an
+   appropriate Perl module and a native API.  For password changing, this
+   would mean enhancing the Authen::Krb5 Perl module to provide an API to
+   the password changing functions to do something similar to kpasswd.
+   kadmin is harder, since MIT Kerberos doesn't provide a usable API to
+   the kadmin client libraries.  Authen::Krb5::Admin hacks around this by
+   defining the API itself, but may not work with all versions of Kerberos
+   and is fragile.
+
  * There is quite a bit of code duplication in kadmin-backend right now
    between the instance commands and the commands for regular principals.
    That script needs another layer of abstraction with generic account
