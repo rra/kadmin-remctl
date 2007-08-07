@@ -388,9 +388,9 @@ sub reset_password {
     }
     $k5admin->send ("$password\n");
     my ($num, $error, $match, $before, $after)
-        = $k5admin->expect (2, 'change_password: ', 'kadmin: ');
+        = $k5admin->expect (30, 'change_password: ', 'kadmin: ');
     if ($num == 1) {
-        $after =~ s/ while changing.*//;
+        $after =~ s/ while changing.*//s;
         warn "error: $after\n";
         print "retstr: $after\n";
         $k5admin->send ("quit\n");
@@ -424,7 +424,7 @@ sub change_password {
     my ($num, $error, $match, $before, $after)
         = $kpasswd->expect (2, 'kpasswd: ', 'Enter new password: ');
     if ($num == 1) {
-        $after =~ s/\r?\n.*//;
+        $after =~ s/\r?\n.*//s;
         warn "error: $after\n";
         print "retstr: $after\n";
         exit 1;
@@ -437,12 +437,12 @@ sub change_password {
     }
     $kpasswd->send ($new . "\n");
     ($num, $error, $match, $before, $after)
-        = $kpasswd->expect (2, 'Password change rejected: ',
+        = $kpasswd->expect (30, 'Password change rejected: ',
                             'Password changed.');
     if ($num == 1) {
-        $after =~ s/\..*//;
+        $after =~ s/\..*//s;
         $after =~ s/\r?\n/ /g;
-        $after =~ s/\s+See the kpasswd man page.*//;
+        $after =~ s/\s+See the kpasswd man page.*//s;
         warn "error: $after\n";
         print "retstr: $after\n";
         exit 1;
@@ -504,9 +504,9 @@ sub create_principal {
     }
     $k5admin->send ("$password\n");
     my ($num, $error, $match, $before, $after)
-        = $k5admin->expect (2, 'add_principal: ', 'kadmin: ');
+        = $k5admin->expect (30, 'add_principal: ', 'kadmin: ');
     if ($num == 1) {
-        $after =~ s/\r?\n.*//;
+        $after =~ s/\r?\n.*//s;
         warn "error: $after\n";
         print "retstr: $after\n";
         exit 1;
@@ -699,10 +699,10 @@ sub instance_create {
     }
     $k5admin->send ("$password\n");
     my ($num, $error, $match, $before, $after)
-        = $k5admin->expect (2, 'add_principal: ', 'kadmin: ');
+        = $k5admin->expect (30, 'add_principal: ', 'kadmin: ');
     if ($num == 1) {
         ad_ldap_delete ($principal, $instance);
-        $after =~ s/\r?\n.*//;
+        $after =~ s/\r?\n.*//s;
         warn "error: $after\n";
         $k5admin->send ("quit\n");
         $k5admin->soft_close;
@@ -772,9 +772,9 @@ sub instance_reset {
     }
     $k5admin->send ("$password\n");
     my ($num, $error, $match, $before, $after)
-        = $k5admin->expect (2, 'change_password: ', 'kadmin: ');
+        = $k5admin->expect (30, 'change_password: ', 'kadmin: ');
     if ($num == 1) {
-        $after =~ s/ while changing.*//;
+        $after =~ s/ while changing.*//s;
         print "retstr: $after\n";
         $k5admin->send ("quit\n");
         $k5admin->soft_close;

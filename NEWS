@@ -2,6 +2,13 @@
 
 kadmin-remctl 1.8 (unreleased)
 
+    Increase the timeouts in the Expect calls while performing the actual
+    operation, since the propagation to Active Directory can take some
+    time.
+
+    When stripping error messages for reporting to the user, don't stop
+    stripping at newlines.
+
     Add a newline after a remctl library error when reporting such errors
     to the user in passwd_change.
 
