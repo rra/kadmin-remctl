@@ -1,5 +1,10 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 1.8 (unreleased)
+
+    Add a newline after a remctl library error when reporting such errors
+    to the user in passwd_change.
+
 kadmin-remctl 1.7 (2007-08-06)
 
     Add the $K5_HOST configuration variable to kadmin-backend which, if

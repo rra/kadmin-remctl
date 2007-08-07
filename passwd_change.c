@@ -240,7 +240,7 @@ reset_password(char *principal, const char *service, const char *host,
     command[4] = NULL;
     result = remctl(host, port, service, command);
     if (result->error != NULL) {
-        fprintf(stderr, "%s", result->error);
+        fprintf(stderr, "%s\n", result->error);
         remctl_result_free(result);
         return -2;
     } else {
