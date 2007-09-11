@@ -1,5 +1,11 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 1.9 (unreleased)
+
+    Add support for optionally adding principals with instances created in
+    Active Directory to an Active Directory authorization group at the
+    time of creation.
+
 kadmin-remctl 1.8 (2007-08-08)
 
     Increase the timeouts in the Expect calls while performing the actual

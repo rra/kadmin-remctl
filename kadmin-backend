@@ -71,12 +71,14 @@ our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
 our $K5START    = 'k5start';
 our $LDAPADD    = 'ldapadd';
 our $LDAPDELETE = 'ldapdelete';
+our $LDAPMODIFY = 'ldapmodify';
 our $LDAPSEARCH = 'ldapsearch';
 
 # Instance configuration.  Each key in this hash is an instance.  Each value
 # is a hash with the following key/value pairs:
 #
 #     ad_config => OpenLDAP config file for AD LDAP commands
+#     ad_group  => Group to which to add all accounts
 #     ad_keytab => Keytab containing credentials for AD authentication
 #     ad_ldif   => Text::Template LDIF file used for AD account changes
 #     acl       => File listing principals that can manage this instance
@@ -231,6 +233,41 @@ sub ad_config {
     return 1;
 }
 
+# Determine the dn for a user principal in AD, used for both adding those
+# principals to groups and deleting them.  In order to figure out the dn, we
+# read the dn: line out of the LDIF file for this instance and then use
+# Text::Template to build our DN.
+sub ad_find_dn {
+    my ($user, $instance) = @_;
+    my $source = $INSTANCES{$instance}{ad_ldif};
+    open (SOURCE, '<', $source)
+        or die "error: cannot open $source: $!\n";
+    local $_;
+    my $dn;
+    while (<SOURCE>) {
+        next unless /^dn:\s+/;
+        $dn = $_;
+        while (<SOURCE>) {
+            last unless /^\s/;
+            s/^\s+//;
+            $dn .= $_;
+        }
+    }
+    close SOURCE;
+    die "error: cannot determine account DN for delete\n"
+        unless $dn;
+    $dn =~ s/^dn: //;
+    $dn =~ s/\s+$//;
+    my $template = Text::Template->new (TYPE => 'STRING', SOURCE => $dn)
+        or die "error: cannot build DN template: $Text::Template::ERROR\n";
+    my %vars = (user => $user, instance => $instance);
+    $dn = $template->fill_in (HASH => \%vars);
+    unless (defined $dn) {
+        die "error: cannot create DN: $Text::Template::ERROR\n";
+    }
+    return $dn;
+}
+
 # Check whether an account already exists in Active Directory.  Takes the
 # user and the instance and returns true if the user exists, false otherwise.
 sub ad_ldap_exists {
@@ -243,6 +280,29 @@ sub ad_ldap_exists {
                    $LDAPSEARCH, '-Q', '-LLL');
     my $output = `@command samaccountname=${user}.${instance}`;
     return ($output ne '') ? 1 : undef;
+}
+
+# Add a user account to an Active Directory authorization group.
+sub ad_group_add {
+    my ($user, $instance) = @_;
+    ad_config ($instance) or return;
+    my $dn = ad_find_dn ($user, $instance);
+    my $group = $INSTANCES{$instance}{ad_group} or return;
+    my @command = ($K5START, '-Uqf', $INSTANCES{$instance}{ad_keytab}, '--',
+                   $LDAPMODIFY, '-Q');
+    my $pid = open (MODIFY, '|-', @command);
+    unless ($pid) {
+        die "error: cannot execute ldapadd: $!\n";
+    }
+    print MODIFY "dn: $group\n";
+    print MODIFY "changetype: modify\n";
+    print MODIFY "add: member\n";
+    print MODIFY "member: $dn\n";
+    print MODIFY "-\n";
+    close MODIFY;
+    if ($? != 0) {
+        die "error: ldapmodify of account in AD failed: $?\n";
+    }
 }
 
 # Create a new user account in Active Directory by instantiating the
@@ -273,40 +333,16 @@ sub ad_ldap_create {
     if ($? != 0) {
         die "error: ldapadd of account to AD failed: $?\n";
     }
+    if ($INSTANCES{$instance}{ad_group}) {
+        ad_group_add ($user, $instance);
+    }
 }
 
 # Delete a user account out of Active Directory.  Takes the user and instance.
-# In order to figure out the dn, we read the dn: line out of the LDIF file for
-# this instance and then use Text::Template to build our DN.
 sub ad_ldap_delete {
     my ($user, $instance) = @_;
     ad_config ($instance) or return;
-    my $source = $INSTANCES{$instance}{ad_ldif};
-    open (SOURCE, '<', $source)
-        or die "error: cannot open $source: $!\n";
-    local $_;
-    my $dn;
-    while (<SOURCE>) {
-        next unless /^dn:\s+/;
-        $dn = $_;
-        while (<SOURCE>) {
-            last unless /^\s/;
-            s/^\s+//;
-            $dn .= $_;
-        }
-    }
-    close SOURCE;
-    die "error: cannot determine account DN for delete\n"
-        unless $dn;
-    $dn =~ s/^dn: //;
-    $dn =~ s/\s+$//;
-    my $template = Text::Template->new (TYPE => 'STRING', SOURCE => $dn)
-        or die "error: cannot build DN template: $Text::Template::ERROR\n";
-    my %vars = (user => $user, instance => $instance);
-    $dn = $template->fill_in (HASH => \%vars);
-    unless (defined $dn) {
-        die "error: cannot create DN: $Text::Template::ERROR\n";
-    }
+    my $dn = ad_find_dn ($user, $instance);
     my @command = ($K5START, '-Uqf', $INSTANCES{$instance}{ad_keytab}, '--',
                    $LDAPDELETE, '-Q');
     system (@command, $dn) == 0
@@ -1068,6 +1104,14 @@ See L<ldap.conf(5)> for the available options.
 
 Only GSSAPI binds are supported by B<kadmin-backend> at this time.
 
+=item ad_group
+
+Contains the DN of an Active Directory authorization group to which all
+created principals of the given instance should be added automatically on
+creation.  The addition will be done by modifying the group identified by
+that DN to add a new C<member> attribute equal to the DN of the newly
+created account.
+
 =item ad_keytab
 
 Points to a keytab used to obtain credentials for Active Directory
@@ -1198,6 +1242,13 @@ Path to B<ldapdelete>, used to obtain credentials when deleting accounts
 from Active Directory.  By default, B<kadmin-backend> searches the PATH for
 the first B<ldapdelete> binary found.
 
+=item $LDAPMODIFY
+
+Path to B<ldapmodify>, used to add principals to Active Directory
+authorization groups if the ad_group configuration option is set.  By
+default, B<kadmin-backend> searches the PATH for the first B<ldapmodify>
+binary found.
+
 =item $LDAPSEARCH
 
 Path to B<ldapsearch>, used to check whether an account already exists in
@@ -1237,7 +1288,8 @@ For the defaults, see the beginning of the kadmin-backend script.
 
 =head1 SEE ALSO
 
-k5start(1), ldap.conf(5), ldapadd(1), ldapdelete(1), ldapsearch(1)
+k5start(1), ldap.conf(5), ldapadd(1), ldapdelete(1), ldapmodify(1),
+ldapsearch(1)
 
 =head1 AUTHOR
 
