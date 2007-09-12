@@ -1,3 +1,10 @@
+kadmin-remctl (1.9-1) unstable; urgency=low
+
+  * New upstream release.
+    - Add support for adding instances to an Active Directory group.
+
+ -- Russ Allbery <rra@debian.org>  Tue, 11 Sep 2007 19:24:16 -0700
+
 kadmin-remctl (1.8-1) unstable; urgency=low
 
   * New upstream release.
