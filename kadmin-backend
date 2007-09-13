@@ -772,8 +772,8 @@ sub instance_list {
     my ($instance) = @_;
     check_instance ($instance);
     my ($status, $output) = run_k5admin ("list_principals */$instance@*");
-    if ($status != 0 || $output =~ /^list_principals: /) {
-        $output =~ s/^list_principals: //;
+    if ($status != 0 || $output =~ /^(get|list)_principals: /) {
+        $output =~ s/^(get|list)_principals: //;
         $output =~ s/\r?\n.*//;
         die "error: $output\n";
     } else {

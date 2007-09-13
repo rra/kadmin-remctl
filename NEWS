@@ -1,5 +1,10 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 1.10 (unreleased)
+
+    Recognize instance list errors from kadmin correctly.  kadmin returns
+    errors prefixed by get_principals, not list_principals.
+
 kadmin-remctl 1.9 (2007-09-11)
 
     Add support for optionally adding principals with instances created in
