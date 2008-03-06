@@ -1,0 +1,47 @@
+=head1 NAME
+
+ksetpass - Set a Kerberos password using existing credentials
+
+=head1 SYNOPSIS
+
+B<ksetpass> I<principal> < I<password>
+
+=head1 DESCRIPTION
+
+B<ksetpass> sets the Kerberos password for the given principal using the
+Kerberos password change network protocol, authenticating with the user's
+existing Kerberos tickets.  It is essentially a very stupid version of
+B<kpasswd> that does not attempt reauthentication and takes no precautions
+about the source of the password.  The principal should be given on the
+command line and the password on standard input.
+
+This program is mostly useful for pushing password changes for
+unprivileged accounts from an automated process.
+
+=head1 WARNINGS
+
+Whatever B<ksetpass> reads from standard input it uses literally as the
+password.  It doesn't remove newlines, for example.  Don't include
+newlines in the password unless the password really includes a newline.
+
+This means that you should not feed it a file created by most editors, and
+you should pass the B<-n> flag to B<echo> if testing from the command
+line.
+
+=head1 BUGS
+
+The maximum length of the password is limited to BUFSIZ, generally between
+1KB and 4KB, because I'm lazy and didn't feel like writing buffer
+reallocation code.
+
+Error reporting is horrible.
+
+=head1 SEE ALSO
+
+kpasswd(1)
+
+=head1 AUTHOR
+
+Russ Allbery <rra@stanford.edu>
+
+=cut

@@ -2,7 +2,7 @@
 # $Id$
 #
 # Written by Russ Allbery <rra@stanford.edu>
-# Copyright 2007 Board of Trustees, Leland Stanford Jr. University
+# Copyright 2007, 2008 Board of Trustees, Leland Stanford Jr. University
 # See README for licensing terms.
 
 AUTOMAKE_OPTIONS = foreign
@@ -10,12 +10,13 @@ ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = docs/design kadmin-backend.8 passwd_change.1 passwd_change.pod \
 	remctl/kadmin remctl/password
 
-bin_PROGRAMS = passwd_change
+bin_PROGRAMS = passwd_change ksetpass
 passwd_change_LDADD = -lremctl
+ksetpass_LDADD = -lkrb5
 
 dist_sbin_SCRIPTS = kadmin-backend
 
-man_MANS = passwd_change.1 kadmin-backend.8
+man_MANS = passwd_change.1 kadmin-backend.8 ksetpass.1
 
 $(srcdir)/passwd_change.1: $(srcdir)/passwd_change.pod
 	pod2man --release=$(VERSION) --center="User Commands" \
@@ -25,10 +26,14 @@ $(srcdir)/kadmin-backend.8: $(srcdir)/kadmin-backend
 	pod2man --release=$(VERSION) --center="Administrative Commands" \
 	    --section=8 $(srcdir)/kadmin-backend > $@
 
+$(srcdir)/ksetpass.1: $(srcdir)/ksetpass.pod
+	pod2man --release=$(VERSION) --center="User Commands" \
+	    $(srcdir)/ksetpass.pod > $@
+
 # Make maintainer-clean do the right thing rather than what GNU thinks it
 # should do.
 MAINTAINERCLEANFILES = Makefile.in aclocal.m4 config.h.in config.h.in~ \
-	configure passwd_change.1 kadmin-backend.8
+	configure passwd_change.1 kadmin-backend.8 ksetpass.1
 
 # A set of flags for warnings.  Add -O because gcc won't find some warnings
 # without optimization turned on, and add -DDEBUG=1 so we'll also compile all

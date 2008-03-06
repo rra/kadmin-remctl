@@ -2,6 +2,9 @@
 
 kadmin-remctl 1.10 (unreleased)
 
+    Added the ksetpass client, which sets a Kerberos password via the
+    password change protocol using an existing Kerberos ticket cache.
+
     Recognize instance list errors from kadmin correctly.  kadmin returns
     errors prefixed by get_principals, not list_principals.
 
