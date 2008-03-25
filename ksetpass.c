@@ -79,7 +79,7 @@ main(int argc, char *argv[])
         exit(1);
     }
     if (result_code != 0) {
-        fprintf(stderr, "password change failed: (%d) %.*s%s%.*s",
+        fprintf(stderr, "password change failed: (%d) %.*s%s%.*s\n",
                 result_code, result_code_string.length,
                 result_code_string.data,
                 result_string.length ? ": " : "",
