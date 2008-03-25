@@ -551,15 +551,20 @@ sub ksetpass {
         $principal .= '@' . $CONFIG{$instance}{ad_realm};
     }
     my @command = ad_command ($instance, $KSETPASS, $principal);
-    my $pid = open (SETPASS, '|-', @command);
-    unless ($pid) {
-        die "error: cannot execute ksetpass: $!\n";
-    }
-    print SETPASS $password;
-    close SETPASS;
+    my $try = 1;
+    do {
+        my $pid = open (SETPASS, '|-', @command);
+        unless ($pid) {
+            die "error: cannot execute ksetpass: $!\n";
+        }
+        print SETPASS $password;
+        close SETPASS;
+    } while ($try++ < 5 && $? != 0);
     if ($? != 0) {
-        die "error: ksetpass of $principal failed\n";
+        warn "error: ksetpass of $principal failed\n";
+        return;
     }
+    return 1;
 }
 
 # Determine the dn for a principal in AD, used for both adding those
@@ -605,9 +610,10 @@ sub ad_ldap_exists {
     if ($principal =~ /[\'\\]/) {
         die "error: invalid user name $principal\n";
     }
+    $principal = "$principal.$instance" if $instance;
     ad_config ($instance) or return;
     my @command = ad_command ($instance, $LDAPSEARCH, '-Q', '-LLL');
-    my $output = `@command 'samaccountname=${principal}.${instance}'`;
+    my $output = `@command 'samaccountname=$principal'`;
     return ($output ne '') ? 1 : 0;
 }
 
@@ -620,7 +626,7 @@ sub ad_group_add {
     my @command = ad_command ($instance, $LDAPMODIFY, '-Q');
     my $pid = open (MODIFY, '|-', @command);
     unless ($pid) {
-        die "error: cannot execute ldapadd: $!\n";
+        die "error: cannot execute ldapmodify: $!\n";
     }
     print MODIFY "dn: $group\n";
     print MODIFY "changetype: modify\n";
@@ -670,7 +676,9 @@ sub ad_ldap_create {
     if ($CONFIG{$instance}{ad_setpass}) {
         unless (ksetpass ($principal, $instance, $password)) {
             ad_ldap_delete ($principal, $instance);
-            die "error: ksetpass for $principal/$instance failed\n";
+            my $full = $principal;
+            $full .= "/$instance" if $instance;
+            die "error: ksetpass for $full failed\n";
         }
         ad_ldap_enable ($principal, $instance);
     }
@@ -738,7 +746,7 @@ sub ad_reset {
     my ($principal, $instance, $password) = @_;
     check_principal ($principal, $instance);
     ad_config ($instance) or return;
-    ksetpass ($principal, $instance, $password);
+    ksetpass ($principal, $instance, $password) or exit 1;
 }
 
 ##############################################################################
