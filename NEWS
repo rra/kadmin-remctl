@@ -18,6 +18,12 @@ kadmin-remctl 2.0 (unreleased)
     Recognize instance list errors from kadmin correctly.  kadmin returns
     errors prefixed by get_principals, not list_principals.
 
+    Allow for kadmin binaries that print error messages in two parts by
+    waiting for the end of the line before extracting the error message.
+
+    When checking against ACLs, support include commands with the same
+    syntax as remctld.
+
 kadmin-remctl 1.9 (2007-09-11)
 
     Add support for optionally adding principals with instances created in

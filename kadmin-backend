@@ -117,9 +117,10 @@ EOH
 ##############################################################################
 
 # Check whether a given principal is present in an ACL.  Returns true if so,
-# false otherwise.
-sub check_acl {
-    my ($acl, $principal) = @_;
+# false otherwise.  We handle remctl's include syntax and use a local hash to
+# protect against including the same file twice.
+sub check_acl_included {
+    my ($included, $acl, $principal) = @_;
     open (ACL, '<', $acl) or die "error: cannot open $acl: $!\n";
     local $_;
     my $regex;
@@ -131,10 +132,19 @@ sub check_acl {
     while (<ACL>) {
         if (/$regex/) {
             return 1;
+        } elsif (/^\s*include\s+(\S+)/) {
+            die "error: recursive includes of $acl\n" if $included->{$1};
+            $included->{$1} = 1;
+            my $status = check_acl_included ($included, $1, $principal);
+            return 1 if $status;
         }
     }
     close ACL;
     return;
+}
+sub check_acl {
+    my %included;
+    return check_acl_included (\%included, @_);
 }
 
 # Check an instance and make sure it's one we're allowed to use.  It must
@@ -143,8 +153,12 @@ sub check_acl {
 # set.
 sub check_instance {
     my ($instance) = @_;
-    if ($instance !~ /^[a-z][0-9a-z]*\z/ || !$CONFIG{$instance}) {
-        die "error: invalid instance: $instance\n";
+    unless ($CONFIG{$instance}) {
+        if ($instance) {
+            die "error: invalid instance: $instance\n";
+        } else {
+            die "error: cannot manage principals without an instance\n";
+        }
     }
     my $acl = $CONFIG{$instance}{acl};
     if ($acl && !check_acl ($acl, $ENV{REMUSER})) {
@@ -272,11 +286,12 @@ sub kadmin_create {
     }
     $k5admin->send ("$password\n");
     my ($num, $error, $match, $before, $after)
-        = $k5admin->expect (30, 'add_principal: ', 'kadmin: ');
+        = $k5admin->expect (30, -re => 'add_principal: .*\n', 'kadmin: ');
     if ($num == 1) {
-        $after =~ s/\r?\n.*//s;
-        warn "error: $after\n";
-        print "retstr: $after\n";
+        $match =~ s/^add_principal: //;
+        $match =~ s/\r?\n//;
+        warn "error: $match\n";
+        print "retstr: $match\n";
         exit 1;
     } elsif ($error) {
         die "error: Expect said $error\n";
@@ -379,11 +394,12 @@ sub kadmin_validate {
     }
     $k5admin->send ("$password\n");
     my ($num, $error, $match, $before, $after)
-        = $k5admin->expect (2, 'change_password: ', 'kadmin: ');
+        = $k5admin->expect (2, -re => 'change_password: .*\n', 'kadmin: ');
     if ($num == 1) {
-        $after =~ s/ while changing.*//s;
+        $match =~ s/^change_password: //;
+        $match =~ s/ while changing.*\n//;
         warn "error: Insecure password rejected\n";
-        print "retstr: Insecure password: $after\n";
+        print "retstr: Insecure password: $match\n";
         $k5admin->send ("quit\n");
         $k5admin->soft_close;
     } elsif ($error) {
@@ -416,11 +432,12 @@ sub kadmin_reset {
     }
     $k5admin->send ("$password\n");
     my ($num, $error, $match, $before, $after)
-        = $k5admin->expect (30, 'change_password: ', 'kadmin: ');
+        = $k5admin->expect (30, -re => 'change_password: .*\n', 'kadmin: ');
     if ($num == 1) {
-        $after =~ s/ while changing.*//s;
-        warn "error: $after\n";
-        print "retstr: $after\n";
+        $match =~ s/^change_password: //;
+        $match =~ s/ while changing.*\n//;
+        warn "error: $match\n";
+        print "retstr: $match\n";
         $k5admin->send ("quit\n");
         $k5admin->soft_close;
         exit 1;
@@ -444,6 +461,7 @@ sub kpasswd {
     check_principal ($principal, $instance);
     check_password ($old);
     check_password ($new);
+    $principal = "$principal/$instance" if $instance;
     my $kpasswd = Expect->spawn ($K5_KPASSWD, $principal);
     unless ($kpasswd) {
         die "error: cannot run $K5_KPASSWD\n";
@@ -532,7 +550,7 @@ sub ksetpass {
     if ($CONFIG{$instance}{ad_realm}) {
         $principal .= '@' . $CONFIG{$instance}{ad_realm};
     }
-    my @command = ad_command ($KSETPASS, $principal);
+    my @command = ad_command ($instance, $KSETPASS, $principal);
     my $pid = open (SETPASS, '|-', @command);
     unless ($pid) {
         die "error: cannot execute ksetpass: $!\n";
@@ -588,7 +606,7 @@ sub ad_ldap_exists {
         die "error: invalid user name $principal\n";
     }
     ad_config ($instance) or return;
-    my @command = ad_command ($LDAPSEARCH, '-Q', '-LLL');
+    my @command = ad_command ($instance, $LDAPSEARCH, '-Q', '-LLL');
     my $output = `@command 'samaccountname=${principal}.${instance}'`;
     return ($output ne '') ? 1 : 0;
 }
@@ -599,7 +617,7 @@ sub ad_group_add {
     ad_config ($instance) or return;
     my $dn = ad_find_dn ($principal, $instance);
     my $group = $CONFIG{$instance}{ad_group} or return;
-    my @command = ad_command ($LDAPMODIFY, '-Q');
+    my @command = ad_command ($instance, $LDAPMODIFY, '-Q');
     my $pid = open (MODIFY, '|-', @command);
     unless ($pid) {
         die "error: cannot execute ldapadd: $!\n";
@@ -639,7 +657,7 @@ sub ad_ldap_create {
     unless (defined $result) {
         die "error: could not create LDIF: $Text::Template::ERROR\n";
     }
-    my @command = ad_command ($LDAPADD, '-Q');
+    my @command = ad_command ($instance, $LDAPADD, '-Q');
     my $pid = open (ADD, '|-', @command);
     unless ($pid) {
         die "error: cannot execute ldapadd: $!\n";
@@ -668,7 +686,7 @@ sub ad_ldap_delete {
     check_principal ($principal, $instance);
     ad_config ($instance) or return;
     my $dn = ad_find_dn ($principal, $instance);
-    my @command = ad_command ($LDAPDELETE, '-Q');
+    my @command = ad_command ($instance, $LDAPDELETE, '-Q');
     system (@command, $dn) == 0
         or die "error: ldapdelete of account in AD failed\n";
 }
@@ -680,7 +698,7 @@ sub ad_ldap_enable {
     check_principal ($principal, $instance);
     ad_config ($instance) or return;
     my $dn = ad_find_dn ($principal, $instance);
-    my @command = ad_command ($LDAPMODIFY, '-Q');
+    my @command = ad_command ($instance, $LDAPMODIFY, '-Q');
     my $pid = open (MODIFY, '|-', @command);
     unless ($pid) {
         die "error: cannot execute ldapmodify: $!\n";
@@ -701,7 +719,7 @@ sub ad_ldap_disable {
     check_principal ($principal, $instance);
     ad_config ($instance) or return;
     my $dn = ad_find_dn ($principal, $instance);
-    my @command = ad_command ($LDAPMODIFY, '-Q');
+    my @command = ad_command ($instance, $LDAPMODIFY, '-Q');
     my $pid = open (MODIFY, '|-', @command);
     unless ($pid) {
         die "error: cannot execute ldapmodify: $!\n";
@@ -785,7 +803,7 @@ sub kaserver_create {
     check_password ($password);
     kaserver_config ($instance) or return;
     $principal = "$principal.$instance" if $instance;
-    kasetkey ($instance, '-r', '-s', $principal) == 0
+    run_kasetkey ($instance, '-r', '-s', $principal) == 0
         or die "error: cannot create K4 principal for $principal\n";
     if ($status ne 'enabled') {
         my ($status, $output) = run_k4admin ($instance, 'disable', $principal);
@@ -801,7 +819,7 @@ sub kaserver_delete {
     check_principal ($principal, $instance);
     kaserver_config ($instance) or return;
     $principal = "$principal.$instance" if $instance;
-    kasetkey ($instance, '-D', $principal) == 0
+    run_kasetkey ($instance, '-D', $principal) == 0
         or die "error: cannot delete $principal in Kerberos v4\n";
 }
 
@@ -844,7 +862,9 @@ sub reset_password {
     unless ($CONFIG{$instance}{reset}) {
         die "error: password reset not permitted for $instance instances\n";
     }
-    if (check_acl ($RESET_ACL, "$principal/$instance")) {
+    my $full = $principal;
+    $full .= "/$instance" if $instance;
+    if (check_acl ($RESET_ACL, $full)) {
         warn "error: password changes not permitted for that user\n";
         exit 2;
     }
@@ -977,8 +997,9 @@ sub examine_principal {
     if ($CONFIG{$instance}{afs_admin} && !$CONFIG{$instance}{afs_fake}) {
         my $k4instance = $instance;
         $k4instance =~ s/\..*//;
-        my $principal = "$principal.$k4instance" if $k4instance;
-        my ($code, $output) = run_k4admin ('example', "$principal");
+        my $k4principal = $principal;
+        $k4principal = "$k4principal.$k4instance" if $k4instance;
+        my ($code, $output) = run_k4admin ($instance, 'examine', $k4principal);
         print $output, '-' x 40, "\n";
     }
     my ($status, $output) = run_k5admin ($instance, "getprinc $principal");
@@ -1120,7 +1141,7 @@ if ($cmd eq 'change_passwd') {
         my $inst  = shift or die "error: missing instance\n";
         my $pass  = shift or die "error: missing password\n";
 
-        reset_principal ($princ, $inst, $pass);
+        reset_password ($princ, $inst, $pass);
 
     } else {
         die "error: unknown cmd: $cmd $subcmd\n";
@@ -1412,7 +1433,11 @@ Srvtab to use for K4 B<kadmin> authentication.
 
 The value is the ACL file listing the principals that can manage instances
 of this type.  This option must be set and should contain a simple list of
-fully-qualified principals, one per line.
+fully-qualified principals, one per line, or lines in the form:
+
+    include /path/to/another/file
+
+which are processed recursively.
 
 =item allowed
 
