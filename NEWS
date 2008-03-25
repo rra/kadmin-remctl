@@ -1,9 +1,19 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 1.10 (unreleased)
+kadmin-remctl 2.0 (unreleased)
 
-    Added the ksetpass client, which sets a Kerberos password via the
+    Significantly rework kadmin-backend.  The configuration variable for
+    instance management has been renamed to %CONFIG and now must be set.
+    It controls both instances and principals without instances.  Many of
+    the global settings have been moved into that hash and can be set
+    per-instance.  Particular instances may now be configured to only
+    exist in Active Directory and bypass Kerberos v5 entirely.
+
+    Add the ksetpass client, which sets a Kerberos password via the
     password change protocol using an existing Kerberos ticket cache.
+    Support using it for password resets in Active Directory and to work
+    around a Windows Server 2008 bug that prevents setting passwords at
+    the time of account creation when using GSS-API authentication.
 
     Recognize instance list errors from kadmin correctly.  kadmin returns
     errors prefixed by get_principals, not list_principals.

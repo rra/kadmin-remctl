@@ -10,15 +10,6 @@
    defining the API itself, but may not work with all versions of Kerberos
    and is fragile.
 
- * There is quite a bit of code duplication in kadmin-backend right now
-   between the instance commands and the commands for regular principals.
-   That script needs another layer of abstraction with generic account
-   creation, deletion, and password reset functions.
-
- * kadmin-remctl currently supports instance propagation as a special
-   case.  Instead, refactor the code so that the same propagation can be
-   done for regular accounts with a similar configuration.
-
  * Rather than make password strength checking a boolean and hard-coding
    the policy name, have the password strength checking option take the
    name of the password policy to use.
@@ -32,10 +23,36 @@
    with that.
 
  * There should be an easier way of setting defaults for passwd_change
-   than patching it at run-time, even though it also supports krb5.conf
+   than patching it at build-time, even though it also supports krb5.conf
    parameters.
 
  * kadmin-backend's check_passwd option could use the username to check
    other things, such as whether the password is based on the username
    and whether the user is reusing their current password (although it
    still couldn't be guaranteed to match every error from change_passwd).
+
+ * kadmin-remctl is really applying a set of operations against different
+   realms (AFS kaserver, Kerberos v5, and Active Directory) based on
+   per-instance configuration.  Generalize this by using multiple modules
+   that serve as providers that perform operations and set rollbacks, so
+   that we can determine the provider stack to run and then just run it.
+
+ * Add enable and disable commands for Active Directory based on modifying
+   the userAccountControl field and then reuse those for the ksetpass case
+   in account creation.
+
+ * Support two configurations for Active Directory: assuming password
+   changes propagate, or separate password changes in Active Directory.
+   For starters, we could do the second only if there's no K5
+   authentication, although that's kind of ugly.
+
+ * We don't roll back Active Directory account creation if Kerberos account
+   creation failed any more.  Fix that, which probably requires making all
+   of the underlying routines return error messages rather than doing the
+   exiting themselves.
+
+ * It would be nice to be able to use the same modules for kadmin calls in
+   wallet as we use here.
+
+ * Look at using IPC::Run for the communication to programs instead of
+   rolling our own.

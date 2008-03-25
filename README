@@ -1,23 +1,23 @@
-                            kadmin-remctl 1.9
+                            kadmin-remctl 2.0
              (remctl interface for Kerberos kadmin functions)
 
                 Written by Russ Allbery <rra@stanford.edu>
 
-  Copyright 1997, 2003, 2007 Board of Trustees, Leland Stanford Jr.
+  Copyright 1997, 2003, 2007, 2008 Board of Trustees, Leland Stanford Jr.
   University.  This software is distributed under a BSD-style license.
   Please see the section LICENSE below for more information.
 
 BLURB
 
   kadmin-remctl provides a remctl backend that implements basic Kerberos
-  account administration functions (create, delete, enable, disable,
-  reset password, examine) plus user password changes and a call to
+  account administration functions (create, delete, enable, disable, reset
+  password, examine) plus user password changes and a call to
   strength-check a given password.  It can also provide similar management
-  of instances and creation, deletion, and management of accounts in
-  Active Directory and an AFS kaserver where appropriate.  Also included
-  is a client for privileged users to use for password resets.  Many of
-  the defaults and namespace checks are Stanford-specific, but it can be
-  modified for other sites.
+  of instances and creation, deletion, and management of accounts in MIT
+  Kerberos, Active Directory, and an AFS kaserver where appropriate.  Also
+  included is a client for privileged users to use for password resets.
+  Many of the defaults and namespace checks are Stanford-specific, but it
+  can be modified for other sites.
 
 DESCRIPTION
 
@@ -36,7 +36,10 @@ DESCRIPTION
   creating, deleting, enabling, and disabling accounts, changing or
   resetting passwords, and checking password strength.  This script does
   synchronization to Active Directory and an AFS kaserver Kerberos v4
-  realm as well where appropriate.
+  realm as well where appropriate.  It also includes ksetpass, a simple
+  client for changing passwords via the Kerberos password change protocol
+  that doesn't prompt for the existing password like kpasswd.  This client
+  is used to set passwords in Active Directory.
 
   Also included in this package is a C client for use by privileged users
   when changing passwords for others.  This client searches for the user
@@ -48,20 +51,19 @@ DESCRIPTION
   principal normally used by remctl and require that the privileged user
   reauthenticate before using this service.
 
-  Many aspects of this package are very Stanford-specific, including the
-  restrictions on valid principal names, default principal names and
-  paths, the AFS kaserver linkage (which uses a Stanford-specific Kerberos
-  v4 kadmin client), and the formatting of the output (which is for
-  compatibility with the legacy APIs used at Stanford).  It is not
-  suitable for using at other sites without modifications, but may provide
-  ideas for how to do something similar for another site.
+  Some aspects of this package are very Stanford-specific, most notably
+  the the AFS kaserver linkage (which uses a Stanford-specific Kerberos v4
+  kadmin client) and the formatting of the output (which is for
+  compatibility with the legacy APIs used at Stanford).  It is probably
+  not suitable for using at other sites without modifications, but may
+  provide ideas for how to do something similar for another site.
 
   For more information, see docs/design in the source distribution.
 
 REQUIREMENTS
 
   The kadmin backend is written in Perl and requires the Perl Expect
-  module.  It calls the Kerberos v5 kadmin and kpasswd programs and
+  module.  It calls the MIT Kerberos v5 kadmin and kpasswd programs and
   therefore requires that they be available.  For integration with the AFS
   kaserver Kerberos v4 realm, it can also use kasetkey and a Kerberos v4
   kadmin client.  (The Kerberos v4 kadmin client is an unreleased internal
@@ -84,6 +86,9 @@ REQUIREMENTS
   library; either MIT Kerberos or Heimdal should be sufficiant (although
   currently the client will produce much better error messages using MIT
   Kerberos).
+
+  ksetpass requires a Kerberos library; either MIT Kerberos or Heimdal
+  should be sufficient.
 
   Finally, the backend is intended to be run under remctld and use remctl
   to handle authentication, privacy, and integrity.
@@ -181,7 +186,7 @@ INSTALLATION
 
 LICENSE
 
-  Copyright 1997, 2003, 2007 Board of Trustees, Leland Stanford Jr.
+  Copyright 1997, 2003, 2007, 2008 Board of Trustees, Leland Stanford Jr.
   University.  All rights reserved.
 
   Permission to use, copy, modify, and distribute this software and its
