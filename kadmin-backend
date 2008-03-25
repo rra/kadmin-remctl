@@ -553,6 +553,7 @@ sub ksetpass {
     my @command = ad_command ($instance, $KSETPASS, $principal);
     my $try = 1;
     do {
+        sleep 1 if $try > 1;
         my $pid = open (SETPASS, '|-', @command);
         unless ($pid) {
             die "error: cannot execute ksetpass: $!\n";
