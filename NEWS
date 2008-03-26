@@ -13,7 +13,8 @@ kadmin-remctl 2.0 (unreleased)
     password change protocol using an existing Kerberos ticket cache.
     Support using it for password resets in Active Directory and to work
     around a Windows Server 2008 bug that prevents setting passwords at
-    the time of account creation when using GSS-API authentication.
+    the time of account creation when using GSS-API authentication.  Based
+    on work by Dmitri Priimak.
 
     Recognize instance list errors from kadmin correctly.  kadmin returns
     errors prefixed by get_principals, not list_principals.
