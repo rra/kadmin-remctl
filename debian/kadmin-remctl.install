@@ -1,2 +1,4 @@
+debian/tmp/usr/bin/ksetpass
 debian/tmp/usr/sbin/kadmin-backend
+debian/tmp/usr/share/man/man1/ksetpass.1
 debian/tmp/usr/share/man/man8/kadmin-backend.8

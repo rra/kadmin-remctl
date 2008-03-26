@@ -2,21 +2,20 @@ Source: kadmin-remctl
 Section: net
 Priority: extra
 Maintainer: Russ Allbery <rra@debian.org>
-Build-Depends: debhelper (>= 5), perl, libremctl-dev, libkrb5-dev, comerr-dev
+Build-Depends: debhelper (>= 5), perl, libremctl-dev, libkrb5-dev,
+ comerr-dev
 Standards-Version: 3.7.2
 
 Package: kadmin-remctl
-Architecture: all
-Depends: remctl-server, krb5-user, libexpect-perl, libtext-template-perl
-Recommends: daemontools, kasetkey, kstart, ldap-utils
+Architecture: any
+Depends: krb5-user, libexpect-perl, ${shlibs:Depends}
+Recommends: kasetkey, kstart, ldap-utils, libtext-template-perl,
+ remctl-server
 Description: remctl backend providing kadmin functions
  This package provides a remctl backend and configuration for doing kadmin
- functions via remctl.  It includes setup and configuration for a separate
- instance of remctld used to support Help Desk password changes that
- requires reauthentication before the password change.
- .
- This package is Stanford-specific in its defaults and configuration
- expectations.
+ functions via remctl.  It also includes the ksetpass client, which
+ changes passwords using the Kerberos password change protocol and doesn't
+ require the current password (with appropriate server ACLs).
 
 Package: password-change
 Architecture: any

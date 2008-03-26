@@ -1,2 +1,0 @@
-kadmin-remctl binary: file-in-unusual-dir service/password-reset/run
-kadmin-remctl binary: non-standard-toplevel-dir service/
