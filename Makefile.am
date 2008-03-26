@@ -7,15 +7,15 @@
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = docs/design kadmin-backend.8 passwd_change.1 passwd_change.pod \
-	remctl/kadmin remctl/password
+EXTRA_DIST = docs/design ksetpass.pod passwd_change.pod remctl/kadmin \
+	remctl/password
 
 bin_PROGRAMS = passwd_change ksetpass
 passwd_change_LDADD = -lremctl
 
 dist_sbin_SCRIPTS = kadmin-backend
 
-man_MANS = passwd_change.1 kadmin-backend.8 ksetpass.1
+dist_man_MANS = passwd_change.1 kadmin-backend.8 ksetpass.1
 
 $(srcdir)/passwd_change.1: $(srcdir)/passwd_change.pod
 	pod2man --release=$(VERSION) --center="User Commands" \
