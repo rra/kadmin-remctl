@@ -33,7 +33,7 @@ configure-stamp:
 	dh_testdir
 	CFLAGS="$(CFLAGS)" ./configure $(SYSTEM) --prefix=/usr \
 	    --mandir=\$${prefix}/share/man --enable-reduced-depends
-	touch configure-stamp
+	touch $@
 
 build: build-arch build-indep
 build-arch: build-stamp
@@ -41,7 +41,7 @@ build-indep: build-stamp
 build-stamp: configure-stamp
 	dh_testdir
 	$(MAKE)
-	touch build-stamp
+	touch $@
 
 clean:
 	dh_testdir
@@ -61,7 +61,7 @@ install-stamp: build-stamp
 	install -m 644 remctl/kadmin $(KADMIN)/etc/remctl/conf.d/kadmin
 	install -d $(KADMIN)/etc/remctl/reset
 	install -m 644 remctl/password $(KADMIN)/etc/remctl/reset/remctl.conf
-	touch install-stamp
+	touch $@
 
 binary: binary-arch binary-indep
 binary-indep:
