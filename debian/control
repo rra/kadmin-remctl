@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: Russ Allbery <rra@debian.org>
 Build-Depends: debhelper (>= 5), perl, libremctl-dev, libkrb5-dev,
  comerr-dev
-Standards-Version: 3.7.2
+Standards-Version: 3.7.3
 
 Package: kadmin-remctl
 Architecture: any

@@ -23,6 +23,7 @@ kadmin-remctl (2.0-1) UNRELEASED; urgency=low
   * Update the long description for kadmin-remctl.  It's no longer very
     Stanford-specific as packaged.
   * Use touch $@ to create stamp files.
+  * Update to standards version 3.7.3 (no changes required).
 
  -- Russ Allbery <rra@debian.org>  Tue, 25 Mar 2008 20:13:44 -0700
 
