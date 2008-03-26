@@ -12,7 +12,6 @@ EXTRA_DIST = docs/design kadmin-backend.8 passwd_change.1 passwd_change.pod \
 
 bin_PROGRAMS = passwd_change ksetpass
 passwd_change_LDADD = -lremctl
-ksetpass_LDADD = -lkrb5
 
 dist_sbin_SCRIPTS = kadmin-backend
 
