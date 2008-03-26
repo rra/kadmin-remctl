@@ -1,4 +1,4 @@
-kadmin-remctl (2.0-1) UNRELEASED; urgency=low
+kadmin-remctl (2.0-1) unstable; urgency=low
 
   * New upstream release.
     - Significant changes to the kadmin-backend configuration.  Many
@@ -25,7 +25,7 @@ kadmin-remctl (2.0-1) UNRELEASED; urgency=low
   * Use touch $@ to create stamp files.
   * Update to standards version 3.7.3 (no changes required).
 
- -- Russ Allbery <rra@debian.org>  Tue, 25 Mar 2008 20:13:44 -0700
+ -- Russ Allbery <rra@debian.org>  Tue, 25 Mar 2008 21:09:57 -0700
 
 kadmin-remctl (1.9-1) unstable; urgency=low
 
