@@ -681,7 +681,9 @@ sub ad_ldap_create {
             $full .= "/$instance" if $instance;
             die "error: ksetpass for $full failed\n";
         }
-        ad_ldap_enable ($principal, $instance);
+        if ($status eq 'enabled') {
+            ad_ldap_enable ($principal, $instance);
+        }
     }
     if ($CONFIG{$instance}{ad_group}) {
         ad_group_add ($principal, $instance);
