@@ -1138,6 +1138,20 @@ if ($cmd eq 'change_passwd') {
 
         delete_principal ($princ, $inst);
 
+    } elsif ($subcmd eq 'disable') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+
+        disable_principal ($princ, $inst);
+
+    } elsif ($subcmd eq 'enable') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+
+        enable_principal ($princ, $inst);
+
     } elsif ($subcmd eq 'list') {
 
         my $inst  = shift or die "error: missing instance\n";
