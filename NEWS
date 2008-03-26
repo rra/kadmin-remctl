@@ -1,5 +1,10 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 2.1 (unreleased)
+
+    Honor allowed regex configuration for valid principal names in examine
+    as well.
+
 kadmin-remctl 2.0 (2008-03-25)
 
     Significantly rework kadmin-backend.  The configuration variable for
