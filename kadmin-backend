@@ -39,7 +39,7 @@ $Expect::Log_Stdout = 0;
 our $STRENGTH   = 'service/password-strength';
 
 # Path to the ACL file of who can change passwords.
-our $RESET_ACL  = '/etc/leland/remctl/kadmin-reset.acl';
+our $RESET_ACL  = '/etc/remctl/acl/password-reset';
 
 # Reserved principal names.
 our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
@@ -48,8 +48,8 @@ our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
 # $K4_KADMIN is undefined by default since you need a Stanford-specific kadmin
 # program.
 our $K4_KADMIN  = undef;
-our $K5_KADMIN  = '/usr/local/sbin/k5admin';
-our $K5_KPASSWD = '/usr/local/bin/kpasswd';
+our $K5_KADMIN  = 'kadmin';
+our $K5_KPASSWD = 'kpasswd';
 our $K5START    = 'k5start';
 our $KASETKEY   = 'kasetkey';
 our $KSETPASS   = 'ksetpass';
