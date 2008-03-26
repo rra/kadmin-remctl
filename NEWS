@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 2.0 (unreleased)
+kadmin-remctl 2.0 (2008-03-25)
 
     Significantly rework kadmin-backend.  The configuration variable for
     instance management has been renamed to %CONFIG and now must be set.
