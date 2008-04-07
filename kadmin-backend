@@ -45,9 +45,6 @@ our $RESET_ACL  = '/etc/remctl/acl/password-reset';
 our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
 
 # Paths to various programs.  By default, we search the current PATH.
-# $K4_KADMIN is undefined by default since you need a Stanford-specific kadmin
-# program.
-our $K4_KADMIN  = undef;
 our $K5_KADMIN  = 'kadmin';
 our $K5_KPASSWD = 'kpasswd';
 our $K5START    = 'k5start';
@@ -70,9 +67,7 @@ our $LDAPSEARCH = 'ldapsearch';
 #     ad_setpass => Use ksetpass rather than LDAP for password setting
 #     afs_admin  => Principal for Kerberos v4 kasetkey authentication
 #     afs_fake   => Whether to fake Kerberos v4 kadmin output
-#     afs_key    => Srvtab for Kerberos v4 kasetkey authentication
-#     afs_princ  => Principal for Kerberos v4 kadmin authentication
-#     afs_srvtab => Srvtab for Kerberos v4 kaserver authentication
+#     afs_srvtab => Srvtab for Kerberos v4 kasetkey authentication
 #     acl        => File listing principals that can manage this instance
 #     allowed    => Regex matching all permitted principal names (w/o instance)
 #     checking   => True if we should enable password strength checking
@@ -761,46 +756,31 @@ sub ad_reset {
 # otherwise.
 sub kaserver_config {
     my ($instance) = @_;
-    return unless $K4_KADMIN;
     return unless $CONFIG{$instance}{afs_admin};
-    die "error: no key configured for AFS kaserver changes\n"
-        unless $CONFIG{$instance}{afs_key};
-    die "error: no admin principal configured for AFS kaserver changes\n"
-        unless $CONFIG{$instance}{afs_princ};
     die "error: no srvtab configured for AFS kaserver changes\n"
         unless $CONFIG{$instance}{afs_srvtab};
     return 1;
 }
 
 # Run a kasetkey command and return the exit status.  Takes the instance as
-# the first parameter to find the right configuration.
-sub run_kasetkey {
-    my ($instance, @args) = @_;
-    my @command = ($KASETKEY, '-k', $CONFIG{$instance}{afs_key},
-                   '-a', $CONFIG{$instance}{afs_admin}, @args);
-    return system (@command);
-}
-
-# Run a Kerberos v4 kadmin command and capture the output.  Takes the instance
-# as the first argument to get the right configuration.  Returns a list
+# the first parameter to find the right configuration and returns a list
 # consisting of the exit status and the output, or in a scalar context, just
 # the exit status.
-sub run_k4admin {
+sub run_kasetkey {
     my ($instance, @args) = @_;
-    my @command = ($K4_KADMIN, '-p', $CONFIG{$instance}{afs_princ},
-                   '-s', $CONFIG{$instance}{afs_srvtab}, @args);
-    my $pid = open (K4ADMIN, '-|');
+    my @command = ($KASETKEY, '-k', $CONFIG{$instance}{afs_srvtab},
+                   '-a', $CONFIG{$instance}{afs_admin}, @args);
+    my $pid = open (KASETKEY, '-|');
     if (not defined $pid) {
         die "error: cannot fork: $!\n";
     } elsif ($pid == 0) {
         open (STDERR, '>&STDOUT') or die "error: cannot dup stdout: $!\n";
         exec (@command)
-            or die "error: cannot run $K4_KADMIN: $!\n";
+            or die "error: cannot run $KASETKEY: $!\n";
     }
     local $_;
     my @output;
-    push (@output, $_) while <K4ADMIN>;
-    close K5ADMIN;
+    push (@output, $_) while <KASETKEY>;
     my $status = ($? >> 8);
     return wantarray ? ($status, join ('', @output)) : $status;
 }
@@ -814,12 +794,16 @@ sub kaserver_create {
     check_password ($password);
     kaserver_config ($instance) or return;
     $principal = "$principal.$instance" if $instance;
-    run_kasetkey ($instance, '-r', '-s', $principal) == 0
-        or die "error: cannot create K4 principal for $principal\n";
+    my ($code, $output) = run_kasetkey ($instance, '-r', '-s', $principal);
+    if ($code != 0) {
+        $output =~ s/\n.*//;
+        die "error: cannot create K4 principal for $principal: $output\n";
+    }
     if ($status ne 'enabled') {
-        my ($status, $output) = run_k4admin ($instance, 'disable', $principal);
-        if ($status != 0) {
-            die "error: cannot disable K4 principal for $principal\n";
+        ($code, $output) = run_kasetkey ($instance, '-n', '-s', $principal);
+        if ($code != 0) {
+            $output =~ s/\n.*//;
+            die "error: cannot disable K4 principal for $principal: $output\n";
         }
     }
 }
@@ -830,8 +814,11 @@ sub kaserver_delete {
     check_principal ($principal, $instance);
     kaserver_config ($instance) or return;
     $principal = "$principal.$instance" if $instance;
-    run_kasetkey ($instance, '-D', $principal) == 0
-        or die "error: cannot delete $principal in Kerberos v4\n";
+    my ($status, $output) = run_kasetkey ($instance, '-D', $principal);
+    if ($status != 0) {
+        $output =~ s/\n.*//;
+        die "error: cannot delete $principal in Kerberos v4: $output\n";
+    }
 }
 
 # Disable a Kerberos v4 principal.
@@ -840,9 +827,10 @@ sub kaserver_disable {
     check_principal ($principal, $instance);
     kaserver_config ($instance) or return;
     $principal = "$principal.$instance" if $instance;
-    my ($code, $output) = run_k4admin ($instance, 'disable', $principal);
-    if ($code != 0) {
-        die "error: cannot disable $principal in Kerberos v4\n";
+    my ($status, $output) = run_kasetkey ($instance, '-n', '-s', $principal);
+    if ($status != 0) {
+        $output =~ s/\n.*//;
+        die "error: cannot disable $principal in Kerberos v4: $output\n";
     }
 }
 
@@ -852,9 +840,10 @@ sub kaserver_enable {
     check_principal ($principal, $instance);
     kaserver_config ($instance) or return;
     $principal = "$principal.$instance" if $instance;
-    my ($code, $output) = run_k4admin ($instance, 'enable', $principal);
-    if ($code != 0) {
-        die "error: cannot enable $principal in Kerberos v4\n";
+    my ($status, $output) = run_k4admin ($instance, '-t', '-s', $principal);
+    if ($status != 0) {
+        $output =~ s/\n.*//;
+        die "error: cannot enable $principal in Kerberos v4: $output\n";
     }
 }
 
@@ -1010,14 +999,23 @@ sub examine_principal {
         $k4instance =~ s/\..*//;
         my $k4principal = $principal;
         $k4principal = "$k4principal.$k4instance" if $k4instance;
-        my ($code, $output) = run_k4admin ($instance, 'examine', $k4principal);
+        my ($code, $output) = run_kaserver ($instance, '-e', $k4principal);
+
+        # Hack hack hack.  This interface is so idiotic.
+        if ($code != 0 && $output =~ /no such entry/) {
+            $output = "error: No such entry in the database (-1783126247)\n";
+        } elsif ($code != 0) {
+            $output = "error: $output";
+        } else {
+            $output = "retstr: $output\n";
+        }
         print $output, '-' x 40, "\n";
     }
     my ($status, $output) = run_k5admin ($instance, "getprinc $principal");
     if ($CONFIG{$instance}{afs_fake}) {
         my $k4output;
         if ($output =~ /Principal does not exist while retrieving/) {
-            $k4output = 'error: No such entry in the database';
+            $k4output = 'error: No such entry in the database (-1783126247)';
         } else {
             if ($output =~ /DISALLOW_ALL_TIX/) {
                 $k4output = "retstr: status: disabled\n";
@@ -1429,10 +1427,8 @@ permit GSS-API authentication over TLS.
 
 =item afs_admin
 
-Principal to use for creating and modifying principals in an AFS kaserver
-(used for the operations that can't be done via B<kadmin>).  If this key
-is not set, no propagation of operations to an AFS kaserver environment is
-attempted.
+Principal to use for AFS kaserver operations.  If this key is not set, no
+propagation of operations to an AFS kaserver environment is attempted.
 
 =item afs_fake
 
@@ -1442,17 +1438,9 @@ kadmin examine output based on the Kerberos v5 output, even if AFS
 kaserver integration is otherwise configured.  This is probably only of
 interest at Stanford University to support an old API.
 
-=item afs_key
-
-Srvtab to use for direct AFS kaserver operations.
-
-=item afs_princ
-
-Principal to use for K4 B<kadmin> authentication.
-
 =item afs_srvtab
 
-Srvtab to use for K4 B<kadmin> authentication.
+Srvtab to use for AFS kaserver authentication.
 
 =item acl
 
@@ -1505,14 +1493,6 @@ otherwise.
 
 =back
 
-=item $K4_KADMIN
-
-Full path to the Kerberos v4 B<kadmin> command-line utility.  Note that
-B<kadmin-backend> expects a Stanford-specific B<kadmin> and this may
-therefore not be that useful for other sites.
-
-If this is set to undef, all Kerberos v4 actions will be skipped.
-
 =item $K5_KADMIN
 
 Path to the regular MIT Kerberos v5 B<kadmin> command-line client.  Most
@@ -1531,9 +1511,9 @@ the first B<k5start> binary found.
 
 =item $KASETKEY
 
-Path to B<kasetkey>, used to make changes to an AFS kaserver that can't be
-done via the Kerberos v4 B<kadmin> program.  By default, B<kadmin-backend>
-searches the PATH for the first B<kasetkey> binary found.
+Path to B<kasetkey>, used to make changes to an AFS kaserver.  By default,
+B<kadmin-backend> searches the PATH for the first B<kasetkey> binary
+found.
 
 =item $KSETPASS
 

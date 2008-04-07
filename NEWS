@@ -2,6 +2,10 @@
 
 kadmin-remctl 2.1 (unreleased)
 
+    kasetkey now supports examine, enable, and disable, so drop all
+    remaining calls to a Kerberos v4 kadmin client and use kasetkey for
+    all AFS kaserver integration.
+
     Honor allowed regex configuration for valid principal names in examine
     as well.
 

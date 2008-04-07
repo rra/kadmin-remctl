@@ -52,11 +52,10 @@ DESCRIPTION
   reauthenticate before using this service.
 
   Some aspects of this package are very Stanford-specific, most notably
-  the the AFS kaserver linkage (which uses a Stanford-specific Kerberos v4
-  kadmin client) and the formatting of the output (which is for
-  compatibility with the legacy APIs used at Stanford).  It is probably
-  not suitable for using at other sites without modifications, but may
-  provide ideas for how to do something similar for another site.
+  the sometimes-bizarre formatting of the output from this script (which
+  is for compatibility with the legacy APIs used at Stanford).  It is
+  probably not suitable for using at other sites without modifications,
+  but may provide ideas for how to do something similar for another site.
 
   For more information, see docs/design in the source distribution.
 
@@ -65,12 +64,8 @@ REQUIREMENTS
   The kadmin backend is written in Perl and requires the Perl Expect
   module.  It calls the MIT Kerberos v5 kadmin and kpasswd programs and
   therefore requires that they be available.  For integration with the AFS
-  kaserver Kerberos v4 realm, it can also use kasetkey and a Kerberos v4
-  kadmin client.  (The Kerberos v4 kadmin client is an unreleased internal
-  Stanford client, so this part of the code would need to be modified at
-  other sites that need to synchronize with Kerberos v4.  A stock Kerberos
-  v4 kadmin client may not work.)  The Kerberos v4 synchronization is
-  disabled by default.
+  kaserver Kerberos v4 realm, it uses kasetkey.  The Kerberos v4
+  synchronization is disabled by default.
 
   The kadmin backend can propagate instance creation and deletion to an
   Active Directory.  To use this support, you will need the Perl Encode,
