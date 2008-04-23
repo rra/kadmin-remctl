@@ -52,3 +52,6 @@
 
  * Look at using IPC::Run for the communication to programs instead of
    rolling our own.
+
+ * The examine function should also do an LDAP lookup against Active
+   Directory if configured to use AD.
