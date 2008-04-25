@@ -999,7 +999,7 @@ sub examine_principal {
         $k4instance =~ s/\..*//;
         my $k4principal = $principal;
         $k4principal = "$k4principal.$k4instance" if $k4instance;
-        my ($code, $output) = run_kaserver ($instance, '-e', $k4principal);
+        my ($code, $output) = run_kasetkey ($instance, '-e', $k4principal);
 
         # Hack hack hack.  This interface is so idiotic.
         if ($code != 0 && $output =~ /no such entry/) {
