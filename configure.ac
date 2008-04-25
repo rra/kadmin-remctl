@@ -8,7 +8,7 @@ dnl See README for licensing terms.
 
 AC_REVISION([$Revision$])
 AC_PREREQ([2.61])
-AC_INIT([kadmin-remctl], [2.0], [rra@stanford.edu])
+AC_INIT([kadmin-remctl], [2.1], [rra@stanford.edu])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE
 AM_MAINTAINER_MODE

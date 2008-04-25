@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 2.1 (unreleased)
+kadmin-remctl 2.1 (2008-04-25)
 
     kasetkey now supports examine, enable, and disable, so drop all
     remaining calls to a Kerberos v4 kadmin client and use kasetkey for
