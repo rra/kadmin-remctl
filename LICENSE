@@ -80,8 +80,8 @@ license:
 
 For the kadmin-remctl distribution, the option described in the last
 paragraph has been accepted and these files are distributed under the same
-terms as the wallet package as a whole, as described at the top of this
-file.
+terms as the kadmin-remctl package as a whole, as described at the top of
+this file.
 
 The file build-aux/install-sh is released under the following copyright
 and license:
