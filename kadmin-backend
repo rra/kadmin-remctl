@@ -840,7 +840,7 @@ sub kaserver_enable {
     check_principal ($principal, $instance);
     kaserver_config ($instance) or return;
     $principal = "$principal.$instance" if $instance;
-    my ($status, $output) = run_k4admin ($instance, '-t', '-s', $principal);
+    my ($status, $output) = run_kasetkey ($instance, '-t', '-s', $principal);
     if ($status != 0) {
         $output =~ s/\n.*//;
         die "error: cannot enable $principal in Kerberos v4: $output\n";
