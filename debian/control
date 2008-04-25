@@ -9,7 +9,7 @@ Standards-Version: 3.7.3
 Package: kadmin-remctl
 Architecture: any
 Depends: krb5-user, libexpect-perl, ${shlibs:Depends}
-Recommends: kasetkey, kstart, ldap-utils, libtext-template-perl,
+Recommends: kasetkey (>= 0.9), kstart, ldap-utils, libtext-template-perl,
  remctl-server
 Description: remctl backend providing kadmin functions
  This package provides a remctl backend and configuration for doing kadmin
