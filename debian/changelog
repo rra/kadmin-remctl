@@ -5,6 +5,7 @@ kadmin-remctl (2.1-1) unstable; urgency=low
     - Honor allowed principal regexes for examine as well.
   * Add a versioned recommends on kasetkey to get enable, disable, and
     examine support.
+  * Update copyright based on the upstream LICENSE file.
 
  -- Russ Allbery <rra@debian.org>  Fri, 25 Apr 2008 10:19:32 -0700
 
