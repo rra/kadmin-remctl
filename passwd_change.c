@@ -1,14 +1,18 @@
-/*  $Id$
-**
-**  This program allows authorized users to change the passwords of other
-**  users.  It talks to a remctl interface via the libremctl library and only
-**  implements password changing, with verbose prompting and the ability to
-**  read the username of the principal whose password should be changed from
-**  the command line).
-**
-**  Written by Russ Allbery <rra@stanford.edu>
-**  Copyright 1997, 2007 Board of Trustees, Leland Stanford Jr. University
-*/
+/* $Id$
+ *
+ * Allow authorized users to change the passwords of other users.
+ *
+ * This program allows authorized users to change the passwords of other
+ * users.  It talks to a remctl interface via the libremctl library and only
+ * implements password changing, with verbose prompting and the ability to
+ * read the username of the principal whose password should be changed from
+ * the command line).
+ *
+ * Written by Russ Allbery <rra@stanford.edu>
+ * Copyright 1997, 2007 Board of Trustees, Leland Stanford Jr. University
+ *
+ * See LICENSE for licensing terms.
+ */
 
 #include <errno.h>
 #include <signal.h>
@@ -50,8 +54,8 @@ static char *program;
 
 
 /*
-**  Load a string option from Kerberos appdefaults.
-*/
+ * Load a string option from Kerberos appdefaults.
+ */
 static void
 config_string(krb5_context ctx, const char *opt, const char *defval,
               char **result)
@@ -59,10 +63,11 @@ config_string(krb5_context ctx, const char *opt, const char *defval,
     krb5_appdefault_string(ctx, "passwd_change", NULL, opt, defval, result);
 }
 
+
 /*
-**  Load a number option from Kerberos appdefaults.  The native interface
-**  doesn't support numbers, so we actually read a string and then convert.
-*/
+ * Load a number option from Kerberos appdefaults.  The native interface
+ * doesn't support numbers, so we actually read a string and then convert.
+ */
 static void
 config_number(krb5_context ctx, const char *opt, int defval, int *result)
 {
@@ -77,11 +82,12 @@ config_number(krb5_context ctx, const char *opt, int defval, int *result)
         free(tmp);
 }
 
+
 /*
-**  Open a connection to kadmind and authenticate to the server.  This creates
-**  a new ticket file and obtains the service/password-change ticket which
-**  will then be used to change the user's password.
-*/
+ * Open a connection to kadmind and authenticate to the server.  This creates
+ * a new ticket file and obtains the service/password-change ticket which will
+ * then be used to change the user's password.
+ */
 static int
 login(krb5_context ctx, char *service)
 {
@@ -91,8 +97,10 @@ login(krb5_context ctx, char *service)
     krb5_creds creds;
     krb5_get_init_creds_opt opts;
 
-    /* First of all, we have to figure out what the admin principal is.  We do
-       that by parsing the user's credential cache. */
+    /*
+     * First of all, we have to figure out what the admin principal is.  We do
+     * that by parsing the user's credential cache.
+     */
     status = krb5_cc_default(ctx, &ccache);
     if (status != 0) {
         com_err(program, status, "while reading ticket cache");
@@ -145,10 +153,11 @@ login(krb5_context ctx, char *service)
     return 0;
 }
 
+
 /*
-**  Prompt for a new password and write it into the given pointer.  Returns 0
-**  on success, -1 on a retriable failure, and -2 on a permanent failure.
-*/
+ * Prompt for a new password and write it into the given pointer.  Returns 0
+ * on success, -1 on a retriable failure, and -2 on a permanent failure.
+ */
 static int
 get_password(char **password)
 {
@@ -212,9 +221,9 @@ get_password(char **password)
 
 
 /*
-**  Actually change the password of a user.  We prompt for the new password
-**  and then call remctl to do the real work.
-*/
+ * Actually change the password of a user.  We prompt for the new password and
+ * then call remctl to do the real work.
+ */
 static int
 reset_password(char *principal, const char *service, const char *host,
                unsigned short port)
@@ -260,12 +269,12 @@ reset_password(char *principal, const char *service, const char *host,
 
 
 /*
-**  Given a username, find their entry in the site password file and read off
-**  their real name.  This is for a double-check verification that one has
-**  typed the right account name.  Returns a malloc()d string that the caller
-**  is responsible for freeing.  Returns NULL on error or if the username
-**  can't be found.
-*/
+ * Given a username, find their entry in the site password file and read off
+ * their real name.  This is for a double-check verification that one has
+ * typed the right account name.  Returns a malloc()d string that the caller
+ * is responsible for freeing.  Returns NULL on error or if the username can't
+ * be found.
+ */
 static char *
 find_name(char *username, const char *passwd_file)
 {
@@ -293,9 +302,11 @@ find_name(char *username, const char *passwd_file)
         return NULL;
     }
 
-    /* Scan through the password file looking for our search string.  If we
-       find it, grab the fourth field of the password entry, copy it into
-       name, and return it.  Otherwise, return NULL. */
+    /*
+     * Scan through the password file looking for our search string.  If we
+     * find it, grab the fourth field of the password entry, copy it into
+     * name, and return it.  Otherwise, return NULL.
+     */
     name = NULL;
     do {
         if (!fgets(buffer, sizeof(buffer), passwd))
@@ -321,6 +332,7 @@ find_name(char *username, const char *passwd_file)
     return name;
 }
 
+
 int
 main(int argc, char **argv)
 {
@@ -330,16 +342,20 @@ main(int argc, char **argv)
     int port, status, tries;
     char *name;
 
-    /* Set the name of the program, used by com_err(), stripping off the path
-       information first. */
+    /*
+     * Set the name of the program, used by com_err(), stripping off the path
+     * information first.
+     */
     program = strrchr (argv[0], '/');
     if (program != NULL)
         program++;
     else
         program = argv[0];
 
-    /* Check for a -h or --help flag and spit out a simple usage if one is
-       given, just in case someone tries that. */
+    /*
+     * Check for a -h or --help flag and spit out a simple usage if one is
+     * given, just in case someone tries that.
+     */
     if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
         printf("Usage: %s [<username>]\n\n", program);
         printf("Usable by authorized users only, changes the password for "
@@ -365,8 +381,10 @@ main(int argc, char **argv)
         exit(1);
     printf("\n");
   
-    /* If we were given a username on the command line, use it.  Otherwise,
-       prompt for a username whose password we're changing. */
+    /*
+     * If we were given a username on the command line, use it.  Otherwise,
+     * prompt for a username whose password we're changing.
+     */
     if (argc > 1)
         strncpy(principal, argv[1], sizeof(principal) - 1);
     else {

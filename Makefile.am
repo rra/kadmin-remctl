@@ -3,7 +3,8 @@
 #
 # Written by Russ Allbery <rra@stanford.edu>
 # Copyright 2007, 2008 Board of Trustees, Leland Stanford Jr. University
-# See README for licensing terms.
+#
+# See LICENSE for licensing terms.
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
@@ -11,7 +12,9 @@ EXTRA_DIST = docs/design ksetpass.pod passwd_change.pod remctl/kadmin \
 	remctl/password
 
 bin_PROGRAMS = passwd_change ksetpass
-passwd_change_LDADD = -lremctl
+passwd_change_CPPFLAGS = $(REMCTL_CPPFLAGS)
+passwd_change_LDFLAGS = $(REMCTL_LDFLAGS)
+passwd_change_LDADD = $(REMCTL_LIBS)
 
 dist_sbin_SCRIPTS = kadmin-backend
 
@@ -43,4 +46,3 @@ WARNINGS = -g -O -DDEBUG=1 -Wall -W -Wendif-labels -Wpointer-arith \
 
 warnings:
 	$(MAKE) CFLAGS='$(WARNINGS)'
-	$(MAKE) CFLAGS='$(WARNINGS)' $(check_PROGRAMS)

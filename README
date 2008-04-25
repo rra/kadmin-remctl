@@ -5,7 +5,7 @@
 
   Copyright 1997, 2003, 2007, 2008 Board of Trustees, Leland Stanford Jr.
   University.  This software is distributed under a BSD-style license.
-  Please see the section LICENSE below for more information.
+  Please see the file LICENSE in the distribution for more information.
 
 BLURB
 
@@ -162,6 +162,11 @@ INSTALLATION
 
       ./configure KRB5_CONFIG=/path/to/krb5-config
 
+  To not use krb5-config and force library probing even if there is a
+  krb5-config script on your path, set KRB5_CONFIG to a nonexistent path:
+
+      ./configure KRB5_CONFIG=/nonexistent
+
   You can build kadmin-remctl in a different directory from the source if
   you wish.  To do this, create a new empty directory, cd to that
   directory, and then give the path to configure when running configure.
@@ -178,23 +183,3 @@ INSTALLATION
   to avoid encoding unnecessary shared library dependencies that make
   shared library migrations more difficult.  If none of the above made any
   sense to you, don't bother with this flag.
-
-LICENSE
-
-  Copyright 1997, 2003, 2007, 2008 Board of Trustees, Leland Stanford Jr.
-  University.  All rights reserved.
-
-  Permission to use, copy, modify, and distribute this software and its
-  documentation for any purpose and without fee is hereby granted,
-  provided that the above copyright notice appear in all copies and that
-  both that copyright notice and this permission notice appear in
-  supporting documentation, and that the name of Stanford University not
-  be used in advertising or publicity pertaining to distribution of the
-  software without specific, written prior permission.  Stanford
-  University makes no representations about the suitability of this
-  software for any purpose.  It is provided "as is" without express or
-  implied warranty.
-
-  THIS SOFTWARE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
-  WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
