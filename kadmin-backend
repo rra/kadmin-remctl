@@ -156,8 +156,10 @@ sub check_instance {
         }
     }
     my $acl = $CONFIG{$instance}{acl};
-    if ($acl && !check_acl ($acl, $ENV{REMUSER})) {
-        die "error: $ENV{REMUSER} not allowed to manage $instance instances\n";
+    die "error: REMOTE_USER not set" unless $ENV{REMOTE_USER};
+    if ($acl && !check_acl ($acl, $ENV{REMOTE_USER})) {
+        die "error: $ENV{REMOTE_USER} not allowed to manage $instance"
+            . " instances\n";
     }
 }
 
@@ -781,6 +783,7 @@ sub run_kasetkey {
     local $_;
     my @output;
     push (@output, $_) while <KASETKEY>;
+    close KASETKEY;
     my $status = ($? >> 8);
     return wantarray ? ($status, join ('', @output)) : $status;
 }
@@ -1576,6 +1579,19 @@ anything they choose.
 =back
 
 For the defaults, see the beginning of the B<kadmin-backend> script.
+
+=head1 ENVIRONMENT
+
+=over 4
+
+=item REMOTE_USER
+
+This environment variable must be set to the Kerberos principal attempting
+an operation when managing instances.  The contents of this variable will
+be checked against the ACL file for that instance.  This variable is
+normally set by the B<remctld> server.
+
+=back
 
 =head1 SEE ALSO
 

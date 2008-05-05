@@ -1,5 +1,14 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 2.2 (unreleased)
+
+    Close the kasetkey output file descriptor before checking its exit
+    status so that we get accurate results.
+
+    Produce better error messages if REMOTE_USER isn't set in the
+    environment when checking authorization for instance management and
+    document the use of REMOTE_USER in the man page.
+
 kadmin-remctl 2.1 (2008-04-25)
 
     kasetkey now supports examine, enable, and disable, so drop all
