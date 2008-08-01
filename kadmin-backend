@@ -1598,6 +1598,9 @@ normally set by the B<remctld> server.
 k5start(1), kasetkey(8), ksetpass(1), ldap.conf(5), ldapadd(1),
 ldapdelete(1), ldapmodify(1), ldapsearch(1)
 
+This program is part of kadmin-remctl.  The current version is available
+from L<http://www.eyrie.org/~eagle/software/kadmin-remctl/>.
+
 =head1 AUTHOR
 
 Russ Allbery <rra@stanford.edu>
