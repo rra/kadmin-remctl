@@ -1,4 +1,4 @@
-kadmin-remctl (2.2-1) UNRELEASED; urgency=low
+kadmin-remctl (2.2-1) unstable; urgency=low
 
   * New upstream release.
     - AFS kaserver support is now frozen.
@@ -8,7 +8,7 @@ kadmin-remctl (2.2-1) UNRELEASED; urgency=low
   * Update standards version to 3.8.0.
     - Use filter instead of findstring for DEB_BUILD_OPTIONS.
 
- -- Russ Allbery <rra@debian.org>  Thu, 31 Jul 2008 19:37:26 -0700
+ -- Russ Allbery <rra@debian.org>  Thu, 31 Jul 2008 19:51:19 -0700
 
 kadmin-remctl (2.1-1) unstable; urgency=low
 
