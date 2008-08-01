@@ -13,6 +13,9 @@ General:
    that serve as providers that perform operations and set rollbacks, so
    that we can determine the provider stack to run and then just run it.
 
+ * Import the messages-krb5 functionality from other programs and use it
+   for error reporting instead of depending on com_err.
+
 kadmin:
 
  * Talking to kadmin and kpasswd via Expect is obviously an ugly hack only
