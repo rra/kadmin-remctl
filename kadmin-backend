@@ -1,5 +1,4 @@
 #!/usr/bin/perl -w
-our $ID = q$Id$;
 #
 # kadmin-backend -- remctl interface to kadmin functionality.
 #
@@ -26,9 +25,6 @@ our $ID = q$Id$;
 ##############################################################################
 
 use strict;
-
-# Needed only for ancient Perl.
-use vars qw($ID);
 
 use Expect ();
 
