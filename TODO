@@ -1,5 +1,23 @@
                          kadmin-remctl To-Do List
 
+General:
+
+ * The current kadmin-remctl API is rather lame and is only used for
+   historical reasons at Stanford.  Introduce a new, cleaner API with
+   better structure to the error reporting and replace the current API
+   with that.
+
+ * kadmin-remctl is really applying a set of operations against different
+   realms (AFS kaserver, Kerberos v5, and Active Directory) based on
+   per-instance configuration.  Generalize this by using multiple modules
+   that serve as providers that perform operations and set rollbacks, so
+   that we can determine the provider stack to run and then just run it.
+
+ * Import the messages-krb5 functionality from other programs and use it
+   for error reporting instead of depending on com_err.
+
+kadmin:
+
  * Talking to kadmin and kpasswd via Expect is obviously an ugly hack only
    done because it was expedient.  We should instead be using an
    appropriate Perl module and a native API.  For password changing, this
@@ -10,17 +28,30 @@
    defining the API itself, but may not work with all versions of Kerberos
    and is fragile.
 
- * Rather than make password strength checking a boolean and hard-coding
-   the policy name, have the password strength checking option take the
-   name of the password policy to use.
+ * It would be nice to be able to use the same modules for kadmin calls in
+   wallet as we use here.
+
+ * Look at using IPC::Run for the communication to programs instead of
+   rolling our own.
+
+Active Directory:
 
  * kadmin-remctl should use Net::LDAP or Net::LDAPapi rather than calling
    the external OpenLDAP utilities.
 
- * The current kadmin-remctl API is rather lame and is only used for
-   historical reasons at Stanford.  Introduce a new, cleaner API with
-   better structure to the error reporting and replace the current API
-   with that.
+ * We don't roll back Active Directory account creation if Kerberos account
+   creation failed any more.  Fix that, which probably requires making all
+   of the underlying routines return error messages rather than doing the
+   exiting themselves.
+
+ * The examine function should also do an LDAP lookup against Active
+   Directory if configured to use AD.
+
+Configuration:
+
+ * Rather than make password strength checking a boolean and hard-coding
+   the policy name, have the password strength checking option take the
+   name of the password policy to use.
 
  * There should be an easier way of setting defaults for passwd_change
    than patching it at build-time, even though it also supports krb5.conf
@@ -31,27 +62,7 @@
    and whether the user is reusing their current password (although it
    still couldn't be guaranteed to match every error from change_passwd).
 
- * kadmin-remctl is really applying a set of operations against different
-   realms (AFS kaserver, Kerberos v5, and Active Directory) based on
-   per-instance configuration.  Generalize this by using multiple modules
-   that serve as providers that perform operations and set rollbacks, so
-   that we can determine the provider stack to run and then just run it.
-
  * Support two configurations for Active Directory: assuming password
    changes propagate, or separate password changes in Active Directory.
    Right now, we select based on whether there's a K5 configuration, which
    is rather ugly.
-
- * We don't roll back Active Directory account creation if Kerberos account
-   creation failed any more.  Fix that, which probably requires making all
-   of the underlying routines return error messages rather than doing the
-   exiting themselves.
-
- * It would be nice to be able to use the same modules for kadmin calls in
-   wallet as we use here.
-
- * Look at using IPC::Run for the communication to programs instead of
-   rolling our own.
-
- * The examine function should also do an LDAP lookup against Active
-   Directory if configured to use AD.

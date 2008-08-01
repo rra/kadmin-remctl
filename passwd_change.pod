@@ -84,6 +84,9 @@ A saner method should be used, like querying an LDAP server.
 
 kadmin-backend(8), kpasswd(1), passwd(5), remctl(1), remctld(8)
 
+This program is part of kadmin-remctl.  The current version is available
+from L<http://www.eyrie.org/~eagle/software/kadmin-remctl/>.
+
 =head1 AUTHOR
 
 Russ Allbery <rra@stanford.edu>

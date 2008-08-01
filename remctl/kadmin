@@ -1,5 +1,4 @@
-# /etc/remctl/conf.d/kadmin -- kadmin remctl services.  -*- sh -*-
-# $Id$
+# /etc/remctl/conf.d/kadmin -- kadmin remctl services.  -*- conf -*-
 #
 # The ACL files used are specific to Stanford and will probably need changes
 # for other sites (if this whole thing is ever useful for other sites).

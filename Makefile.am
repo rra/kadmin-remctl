@@ -1,5 +1,4 @@
 # Makefile.am -- Automake makefile for kadmin-remctl.
-# $Id$
 #
 # Written by Russ Allbery <rra@stanford.edu>
 # Copyright 2007, 2008 Board of Trustees, Leland Stanford Jr. University
@@ -8,8 +7,8 @@
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = docs/design ksetpass.pod passwd_change.pod remctl/kadmin \
-	remctl/password
+EXTRA_DIST = LICENSE docs/design ksetpass.pod passwd_change.pod \
+	remctl/kadmin remctl/password
 
 bin_PROGRAMS = passwd_change ksetpass
 passwd_change_CPPFLAGS = $(REMCTL_CPPFLAGS)
@@ -34,7 +33,8 @@ $(srcdir)/ksetpass.1: $(srcdir)/ksetpass.pod
 
 # Make maintainer-clean do the right thing rather than what GNU thinks it
 # should do.
-MAINTAINERCLEANFILES = Makefile.in aclocal.m4 config.h.in config.h.in~ \
+MAINTAINERCLEANFILES = Makefile.in aclocal.m4 build-aux/depcomp \
+	build-aux/install-sh build-aux/missing config.h.in config.h.in~ \
 	configure passwd_change.1 kadmin-backend.8 ksetpass.1
 
 # A set of flags for warnings.  Add -O because gcc won't find some warnings

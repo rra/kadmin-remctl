@@ -1,8 +1,6 @@
                          kadmin remctl Interface
                            Design Documentation
 
-          $Date$
-
 Overview
 
     In order to abstract changes in the kadmin interface between different
