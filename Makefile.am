@@ -7,8 +7,8 @@
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = docs/design ksetpass.pod passwd_change.pod remctl/kadmin \
-	remctl/password
+EXTRA_DIST = LICENSE docs/design ksetpass.pod passwd_change.pod \
+	remctl/kadmin remctl/password
 
 bin_PROGRAMS = passwd_change ksetpass
 passwd_change_CPPFLAGS = $(REMCTL_CPPFLAGS)
