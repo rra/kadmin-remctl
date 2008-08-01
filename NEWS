@@ -2,6 +2,10 @@
 
 kadmin-remctl 2.2 (unreleased)
 
+    As of this release, AFS kaserver support is frozen and no longer
+    tested.  It may be removed in a future release if there is significant
+    code restructuring.
+
     Close the kasetkey output file descriptor before checking its exit
     status so that we get accurate results.
 

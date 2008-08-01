@@ -21,16 +21,16 @@ BLURB
 
 DESCRIPTION
 
-  At Stanford, we are currently running three Kerberos realms: an MIT
-  Kerberos v5 realm, an Active Directory realm, and an AFS kaserver
-  Kerberos v4 realm.  We also have middleware and web applications that
-  support changing or resetting passwords, creating new accounts,
-  examining principals, and enabling or disabling accounts based on
-  affiliation changes.  Rather than give all of these systems kadmin
-  access (and force them to use kadmin clients, which is difficult since
-  many are written in Java), and rather than forcing them to do realm
-  synchronization themselves, we export an interface via remctl and use
-  the Java remctl client to talk to that interface.
+  At Stanford, we at one time had three Kerberos realms: an MIT Kerberos
+  v5 realm, an Active Directory realm, and an AFS kaserver Kerberos v4
+  realm.  We also have middleware and web applications that support
+  changing or resetting passwords, creating new accounts, examining
+  principals, and enabling or disabling accounts based on affiliation
+  changes.  Rather than give all of these systems kadmin access (and force
+  them to use kadmin clients, which is difficult since many are written in
+  Java), and rather than forcing them to do realm synchronization
+  themselves, we export an interface via remctl and use the Java remctl
+  client to talk to that interface.
 
   This package includes the kadmin backend, a Perl script that supports
   creating, deleting, enabling, and disabling accounts, changing or
@@ -56,6 +56,10 @@ DESCRIPTION
   is for compatibility with the legacy APIs used at Stanford).  It is
   probably not suitable for using at other sites without modifications,
   but may provide ideas for how to do something similar for another site.
+
+  The AFS kaserver support should be considered frozen and is no longer
+  tested since Stanford no longer runs a kaserver environment.  It may be
+  dropped from a future release if the code is significantly restructured.
 
   For more information, see docs/design in the source distribution.
 
@@ -183,3 +187,21 @@ INSTALLATION
   to avoid encoding unnecessary shared library dependencies that make
   shared library migrations more difficult.  If none of the above made any
   sense to you, don't bother with this flag.
+
+HOMEPAGE AND SOURCE REPOSITORY
+
+  The kadmin-remctl web page at:
+
+      http://www.eyrie.org/~eagle/software/kadmin-remctl/
+
+  will always have the current version of this package, the current
+  documentation, and pointers to any additional resources.
+
+  kadmin-remctl is maintained using Git.  You can access the current
+  source by cloning the repository at:
+
+      git://git.eyrie.org/kerberos/kadmin-remctl.git
+
+  or view the repository via the web at:
+
+      http://git.eyrie.org/?p=kerberos/kadmin-remctl.git
