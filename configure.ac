@@ -3,7 +3,7 @@ dnl
 dnl Written by Russ Allbery <rra@stanford.edu>
 dnl Copyright 2007, 2008 Board of Trustees, Leland Stanford Jr. University
 dnl
-dnl See README for licensing terms.
+dnl See LICENSE for licensing terms.
 
 AC_PREREQ([2.61])
 AC_INIT([kadmin-remctl], [2.1], [rra@stanford.edu])
