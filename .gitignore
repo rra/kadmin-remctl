@@ -1,0 +1,17 @@
+.deps
+Makefile
+Makefile.in
+aclocal.m4
+build-aux
+config.h
+config.h.in
+config.h.in~
+config.log
+config.status
+configure
+ksetpass
+passwd_change
+stamp-h1
+*.1
+*.8
+*.o
