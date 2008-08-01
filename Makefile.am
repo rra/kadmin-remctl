@@ -33,7 +33,8 @@ $(srcdir)/ksetpass.1: $(srcdir)/ksetpass.pod
 
 # Make maintainer-clean do the right thing rather than what GNU thinks it
 # should do.
-MAINTAINERCLEANFILES = Makefile.in aclocal.m4 config.h.in config.h.in~ \
+MAINTAINERCLEANFILES = Makefile.in aclocal.m4 build-aux/depcomp \
+	build-aux/install-sh build-aux/missing config.h.in config.h.in~ \
 	configure passwd_change.1 kadmin-backend.8 ksetpass.1
 
 # A set of flags for warnings.  Add -O because gcc won't find some warnings
