@@ -4,6 +4,7 @@ kadmin-remctl (2.2-1) UNRELEASED; urgency=low
     - AFS kaserver support is now frozen.
     - Check return status from kasetkey properly.
     - Better error messages if REMOTE_USER isn't set.
+  * Update standards version to 3.8.0 (no changes required).
 
  -- Russ Allbery <rra@debian.org>  Thu, 31 Jul 2008 19:37:26 -0700
 
