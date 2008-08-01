@@ -1,5 +1,4 @@
-/* $Id$
- *
+/*
  * Allow authorized users to change the passwords of other users.
  *
  * This program allows authorized users to change the passwords of other

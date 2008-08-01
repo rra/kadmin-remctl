@@ -40,6 +40,9 @@ Error reporting is horrible.
 
 kpasswd(1)
 
+This program is part of kadmin-remctl.  The current version is available
+from L<http://www.eyrie.org/~eagle/software/kadmin-remctl/>.
+
 =head1 AUTHOR
 
 Russ Allbery <rra@stanford.edu>

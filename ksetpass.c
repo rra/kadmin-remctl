@@ -1,5 +1,4 @@
-/* $Id$
- *
+/*
  * Command-line client to set a Kerberos password.
  *
  * Sets a Kerberos password via the Kerberos password change network protocol
