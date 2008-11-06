@@ -16,6 +16,8 @@ General:
  * Import the messages-krb5 functionality from other programs and use it
    for error reporting instead of depending on com_err.
 
+ * Support examining principals with instances.
+
 kadmin:
 
  * Talking to kadmin and kpasswd via Expect is obviously an ugly hack only
