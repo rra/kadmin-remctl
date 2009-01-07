@@ -4,7 +4,8 @@
 #
 # Written by Russ Allbery <rra@stanford.edu>
 # Based heavily on work by Roland Schemers
-# Copyright 2003, 2007, 2008 Board of Trustees, Leland Stanford Jr. University
+# Copyright 2003, 2007, 2008, 2009
+#     Board of Trustees, Leland Stanford Jr. University
 #
 # Permission to use, copy, modify, and distribute this software and its
 # documentation for any purpose and without fee is hereby granted, provided
@@ -1097,8 +1098,10 @@ if ($cmd eq 'change_passwd') {
 } elsif ($cmd eq 'examine') {
 
     my $princ = shift or die "error: missing principal\n";
+    my $inst;
 
-    examine_principal ($princ, '');
+    ($princ, $inst) = split ('/', $princ);
+    examine_principal ($princ, $inst);
 
 } elsif ($cmd eq 'help') {
 

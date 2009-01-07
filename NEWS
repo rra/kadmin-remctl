@@ -1,5 +1,11 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 2.3 (unreleased)
+
+    Properly add support for examining principals with instances we don't
+    manage.  Previous versions were supposed to support this but didn't
+    due to a bug in argument passing.
+
 kadmin-remctl 2.2 (2008-07-31)
 
     As of this release, AFS kaserver support is frozen and no longer
