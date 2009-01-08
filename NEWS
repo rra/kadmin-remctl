@@ -6,6 +6,18 @@ kadmin-remctl 2.3 (unreleased)
     manage.  Previous versions were supposed to support this but didn't
     due to a bug in argument passing.
 
+    Attempt to determine if the library directory for remctl (and the
+    directory for Kerberos and GSS-API libraries if krb5-config isn't
+    found) is lib32 or lib64 instead of lib and set LDFLAGS accordingly.
+    Based on an idea from the CMU Autoconf macros.
+
+    Add --with-remctl-include, --with-remctl-lib, --with-gssapi-include,
+    --with-gssapi-lib, --with-krb5-include, and --with-krb5-lib configure
+    options to allow more specific setting of paths if necessary.
+
+    Check at configure time that we can link with the remctl library we
+    found.
+
 kadmin-remctl 2.2 (2008-07-31)
 
     As of this release, AFS kaserver support is frozen and no longer

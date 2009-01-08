@@ -1,17 +1,22 @@
 dnl remctl.m4 -- Find the compiler and linker flags for remctl.
 dnl
-dnl This file provides RRA_LIB_REMCTL, which finds the compiler and linker
-dnl flags for linking with remctl libraries and sets the substitution
-dnl variables REMCTL_CPPFLAGS, REMCTL_LDFLAGS, and REMCTL_LIBS.  Also provides
+dnl Finds the compiler and linker flags for linking with remctl libraries.
+dnl Provides the --with-remctl, --with-remctl-include, and --with-remctl-lib
+dnl configure options to specify non-standard paths to the remctl headers and
+dnl libraries.
+dnl
+dnl Provides the macro RRA_LIB_REMCTL and sets the substitution variables
+dnl REMCTL_CPPFLAGS, REMCTL_LDFLAGS, and REMCTL_LIBS.  Also provides
 dnl RRA_LIB_REMCTL_SET to set CPPFLAGS, LDFLAGS, and LIBS to include the
 dnl remctl libraries; RRA_LIB_REMCTL_SWITCH to do the same but save the
 dnl current values first; and RRA_LIB_REMCTL_RESTORE to restore those settings
 dnl to before the last RRA_LIB_REMCTL_SWITCH.
 dnl
-dnl This macro depends on RRA_ENABLE_REDUCED_DEPENDS and RRA_LIB_GSSAPI.
+dnl Depends on RRA_ENABLE_REDUCED_DEPENDS, RRA_SET_LDFLAGS, and
+dnl RRA_LIB_GSSAPI.
 dnl
 dnl Written by Russ Allbery <rra@stanford.edu>
-dnl Copyright 2008 Board of Trustees, Leland Stanford Jr. University
+dnl Copyright 2008, 2009 Board of Trustees, Leland Stanford Jr. University
 dnl
 dnl See LICENSE for licensing terms.
 
@@ -38,32 +43,61 @@ AC_DEFUN([RRA_LIB_REMCTL_RESTORE],
  LDFLAGS="$rra_remctl_save_LDFLAGS"
  LIBS="$rra_remctl_save_LIBS"])
 
-dnl Set REMCTL_CPPFLAGS and REMCTL_LDFLAGS based on rra_remctl_root.
+dnl Set REMCTL_CPPFLAGS and REMCTL_LDFLAGS based on rra_remctl_root,
+dnl rra_remctl_libdir, and rra_remctl_includedir.
 AC_DEFUN([_RRA_LIB_REMCTL_PATHS],
-[AS_IF([test x"$rra_remctl_root" != x],
-    [AS_IF([test x"$rra_remctl_root" != x/usr],
-        [REMCTL_CPPFLAGS="-I${rra_remctl_root}/include"])
-     REMCTL_LDFLAGS="-L${rra_remctl_root}/lib"])])
+[AS_IF([test x"$rra_remctl_libdir" != x],
+    [REMCTL_LDFLAGS="-L$rra_remctl_libdir"],
+    [AS_IF([test x"$rra_remctl_root" != x],
+        [RRA_SET_LDFLAGS([REMCTL_LDFLAGS], [$rra_remctl_root])])])
+ AS_IF([test x"$rra_remctl_includedir" != x],
+    [REMCTL_CPPFLAGS="-I$rra_remctl_includedir"],
+    [AS_IF([test x"$rra_remctl_root" != x],
+        [AS_IF([test x"$rra_remctl_root" != x/usr],
+            [REMCTL_CPPFLAGS="-I${rra_remctl_root}/include"])])])])
+
+dnl Sanity-check the results of the remctl library search to be sure we can
+dnl really link a remctl program.
+AC_DEFUN([_RRA_LIB_REMCTL_CHECK],
+[RRA_LIB_REMCTL_SWITCH
+ AC_CHECK_FUNC([remctl_open], ,
+    [AC_MSG_FAILURE([unable to link with remctl library])])
+ RRA_LIB_REMCTL_RESTORE])
 
 dnl The main macro.
 AC_DEFUN([RRA_LIB_REMCTL],
 [AC_REQUIRE([RRA_ENABLE_REDUCED_DEPENDS])
  rra_remctl_root=
+ rra_remctl_libdir=
+ rra_remctl_includedir=
  REMCTL_CPPFLAGS=
  REMCTL_LDFLAGS=
  REMCTL_LIBS=
  AC_SUBST([REMCTL_CPPFLAGS])
  AC_SUBST([REMCTL_LDFLAGS])
  AC_SUBST([REMCTL_LIBS])
+
  AC_ARG_WITH([remctl],
     [AC_HELP_STRING([--with-remctl=DIR],
         [Location of remctl headers and libraries])],
     [AS_IF([test x"$withval" != xyes && test x"$withval" != xno],
         [rra_remctl_root="$withval"])])
+ AC_ARG_WITH([remctl-include],
+    [AC_HELP_STRING([--with-remctl-include=DIR],
+        [Location of remctl headers])],
+    [AS_IF([test x"$withval" != xyes && test x"$withval" != xno],
+        [rra_remctl_includedir="$withval"])])
+ AC_ARG_WITH([remctl-lib],
+    [AC_HELP_STRING([--with-remctl-lib=DIR],
+        [Location of remctl libraries])],
+    [AS_IF([test x"$withval" != xyes && test x"$withval" != xno],
+        [rra_remctl_libdir="$withval"])])
+
  _RRA_LIB_REMCTL_PATHS
  AS_IF([test x"$rra_reduced_depends" = xtrue],
     [REMCTL_LIBS="-lremctl"],
     [RRA_LIB_GSSAPI
      REMCTL_CPPFLAGS="$REMCTL_CPPFLAGS $GSSAPI_CPPFLAGS"
      REMCTL_LDFLAGS="$REMCTL_LDFLAGS $GSSAPI_LDFLAGS"
-     REMCTL_LIBS="-lremctl $GSSAPI_LIBS"])])
+     REMCTL_LIBS="-lremctl $GSSAPI_LIBS"])
+ _RRA_LIB_REMCTL_CHECK])
