@@ -990,15 +990,26 @@ sub exists_principal {
 sub examine_principal {
     my ($principal, $instance) = @_;
     $instance ||= '';
-    my $regex = $CONFIG{$instance}{allowed} || '^[a-zA-Z0-9]+\z';
+    unless ($CONFIG{$instance} or $CONFIG{''}) {
+        die "error: invalid instance $instance\n";
+    }
+    my $regex;
+    if ($CONFIG{$instance}) {
+        $regex = $CONFIG{$instance}{allowed} || '^[a-zA-Z0-9]+\z';
+    } else {
+        $regex = '^[a-zA-Z0-9]+\z';
+    }
     unless ($principal =~ /$regex/ and $instance =~ m%^([a-zA-Z0-9._-]+)?\z%) {
         die "error: invalid character in principal name\n";
     }
+    $principal = "$principal/$instance" if $instance;
+    $instance = '' unless $CONFIG{$instance};
     if ($CONFIG{$instance}{afs_admin} && !$CONFIG{$instance}{afs_fake}) {
-        my $k4instance = $instance;
-        $k4instance =~ s/\..*//;
         my $k4principal = $principal;
-        $k4principal = "$k4principal.$k4instance" if $k4instance;
+        $k4principal =~ s%\.[^/]*$%%;
+        $k4principal =~ s%^host/%rcmd/%;
+        $k4principal =~ s%(^[^/]*/[^/]*)/.*%$1%;
+        $k4principal =~ s%/%.%;
         my ($code, $output) = run_kasetkey ($instance, '-e', $k4principal);
 
         # Hack hack hack.  This interface is so idiotic.
@@ -1329,8 +1340,12 @@ following Perl variables may be set:
 This is the general configuration for how each type of principal should be
 handled.  Every instance managed by this installation of B<kadmin-backend>
 needs to be configured here.  Each key of this hash should be the name of
-an instance (possibly C<''> for the empty instance).  Each value should be
-a hash containing one or more of the following keys:
+an instance (possibly C<''> for the empty instance).  The values for a key
+of C<''> will be used when examining principals with unknown instances,
+and if there is no configuration for C<''>, examining such principals will
+not be allowed.
+
+Each value should be a hash containing one or more of the following keys:
 
 =over 2
 
