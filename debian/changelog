@@ -1,3 +1,10 @@
+kadmin-remctl (2.3-1) unstable; urgency=low
+
+  * New upstream release.
+    - Support examining principals with instances we don't manage.
+
+ -- Russ Allbery <rra@debian.org>  Wed, 07 Jan 2009 19:18:15 -0800
+
 kadmin-remctl (2.2-1) unstable; urgency=low
 
   * New upstream release.
