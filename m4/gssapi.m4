@@ -1,10 +1,9 @@
 dnl gssapi.m4 -- Find the compiler and linker flags for GSS-API.
 dnl
-dnl Finds the compiler and linker flags for linking with GSS-API libraries
-dnl and sets the substitution variables GSSAPI_CPPFLAGS, GSSAPI_LDFLAGS, and
-dnl GSSAPI_LIBS.  Provides the --with-gssapi configure option to specify a
-dnl non-standard path to the GSS-API libraries.  Uses krb5-config where
-dnl available unless reduced dependencies is requested.
+dnl Finds the compiler and linker flags for linking with GSS-API libraries.
+dnl Provides the --with-gssapi, --with-gssapi-include, and --with-gssapi-lib
+dnl configure option to specify a non-standard path to the GSS-API libraries.
+dnl Uses krb5-config where available unless reduced dependencies is requested.
 dnl
 dnl Provides the macro RRA_LIB_GSSAPI and sets the substitution variables
 dnl GSSAPI_CPPFLAGS, GSSAPI_LDFLAGS, and GSSAPI_LIBS.  Also provides
@@ -13,8 +12,10 @@ dnl GSS-API libraries; RRA_LIB_GSSAPI_SWITCH to do the same but save the
 dnl current values first; and RRA_LIB_GSSAPI_RESTORE to restore those settings
 dnl to before the last RRA_LIB_GSSAPI_SWITCH.
 dnl
+dnl Depends on RRA_ENABLE_REDUCED_DEPENDS and RRA_SET_LDFLAGS.
+dnl
 dnl Written by Russ Allbery <rra@stanford.edu>
-dnl Copyright 2005, 2006, 2007, 2008
+dnl Copyright 2005, 2006, 2007, 2008, 2009
 dnl     Board of Trustees, Leland Stanford Jr. University
 dnl
 dnl See LICENSE for licensing terms.
@@ -41,12 +42,18 @@ AC_DEFUN([RRA_LIB_GSSAPI_RESTORE],
  LDFLAGS="$rra_gssapi_save_LDFLAGS"
  LIBS="$rra_gssapi_save_LIBS"])
 
-dnl Set GSSAPI_CPPFLAGS and GSSAPI_LDFLAGS based on rra_gssapi_root.
+dnl Set GSSAPI_CPPFLAGS and GSSAPI_LDFLAGS based on rra_gssapi_root,
+dnl rra_gssapi_libdir, and rra_gssapi_includedir.
 AC_DEFUN([_RRA_LIB_GSSAPI_PATHS],
-[AS_IF([test x"$rra_gssapi_root" != x],
-    [AS_IF([test x"$rra_gssapi_root" != x/usr],
-        [GSSAPI_CPPFLAGS="-I${rra_gssapi_root}/include"])
-     GSSAPI_LDFLAGS="-L${rra_gssapi_root}/lib"])])
+[AS_IF([test x"$rra_gssapi_libdir" != x],
+    [GSSAPI_LDFLAGS="-L$rra_gssapi_libdir"],
+    [AS_IF([test x"$rra_gssapi_root" != x],
+        [RRA_SET_LDFLAGS([GSSAPI_LDFLAGS], [$rra_gssapi_root])])])
+ AS_IF([test x"$rra_gssapi_includedir" != x],
+    [GSSAPI_CPPFLAGS="-I$rra_gssapi_includedir"],
+    [AS_IF([test x"$rra_gssapi_root" != x],
+        [AS_IF([test x"$rra_gssapi_root" != x/usr],
+            [GSSAPI_CPPFLAGS="-I${rra_gssapi_root}/include"])])])])
 
 dnl Does the appropriate library checks for reduced-dependency GSS-API
 dnl linkage.
@@ -108,17 +115,31 @@ dnl The main macro.
 AC_DEFUN([RRA_LIB_GSSAPI],
 [AC_REQUIRE([RRA_ENABLE_REDUCED_DEPENDS])
  rra_gssapi_root=
+ rra_gssapi_libdir=
+ rra_gssapi_includedir=
  GSSAPI_CPPFLAGS=
  GSSAPI_LDFLAGS=
  GSSAPI_LIBS=
  AC_SUBST([GSSAPI_CPPFLAGS])
  AC_SUBST([GSSAPI_LDFLAGS])
  AC_SUBST([GSSAPI_LIBS])
+
  AC_ARG_WITH([gssapi],
     [AC_HELP_STRING([--with-gssapi=DIR],
         [Location of GSS-API headers and libraries])],
     [AS_IF([test x"$withval" != xyes && test x"$withval" != xno],
         [rra_gssapi_root="$withval"])])
+ AC_ARG_WITH([gssapi-include],
+    [AC_HELP_STRING([--with-gssapi-include=DIR],
+        [Location of GSS-API headers])],
+    [AS_IF([test x"$withval" != xyes && test x"$withval" != xno],
+        [rra_gssapi_includedir="$withval"])])
+ AC_ARG_WITH([gssapi-lib],
+    [AC_HELP_STRING([--with-gssapi-lib=DIR],
+        [Location of GSS-API libraries])],
+    [AS_IF([test x"$withval" != xyes && test x"$withval" != xno],
+        [rra_gssapi_libdir="$withval"])])
+
  AS_IF([test x"$rra_reduced_depends" = xtrue],
     [_RRA_LIB_GSSAPI_PATHS
      _RRA_LIB_GSSAPI_REDUCED],
