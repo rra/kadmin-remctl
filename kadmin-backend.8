@@ -271,8 +271,12 @@ following Perl variables may be set:
 This is the general configuration for how each type of principal should be
 handled.  Every instance managed by this installation of \fBkadmin-backend\fR
 needs to be configured here.  Each key of this hash should be the name of
-an instance (possibly \f(CW\*(Aq\*(Aq\fR for the empty instance).  Each value should be
-a hash containing one or more of the following keys:
+an instance (possibly \f(CW\*(Aq\*(Aq\fR for the empty instance).  The values for a key
+of \f(CW\*(Aq\*(Aq\fR will be used when examining principals with unknown instances,
+and if there is no configuration for \f(CW\*(Aq\*(Aq\fR, examining such principals will
+not be allowed.
+.Sp
+Each value should be a hash containing one or more of the following keys:
 .RS 4
 .IP "ad_config" 2
 .IX Item "ad_config"
