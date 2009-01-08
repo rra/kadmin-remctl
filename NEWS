@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 2.3 (unreleased)
+kadmin-remctl 2.3 (2009-01-07)
 
     Properly add support for examining principals with instances we don't
     manage.  Previous versions were supposed to support this but didn't
