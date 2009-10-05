@@ -5,6 +5,7 @@ kadmin-remctl (2.4-1) unstable; urgency=low
   * Update to debhelper compatibility level V7.
     - Use debhelper rule minimization with overrides.
     - Add ${misc:Depends} to all dependencies.
+  * Update standards version to 3.8.3 (no changes required).
 
  -- Russ Allbery <rra@debian.org>  Mon, 05 Oct 2009 16:13:02 -0700
 
