@@ -24,18 +24,6 @@ dist_sbin_SCRIPTS = kadmin-backend
 
 dist_man_MANS = passwd_change.1 kadmin-backend.8 ksetpass.1
 
-$(srcdir)/passwd_change.1: $(srcdir)/passwd_change.pod
-	pod2man --release=$(VERSION) --center="User Commands" \
-	    $(srcdir)/passwd_change.pod > $@
-
-$(srcdir)/kadmin-backend.8: $(srcdir)/kadmin-backend
-	pod2man --release=$(VERSION) --center="Administrative Commands" \
-	    --section=8 $(srcdir)/kadmin-backend > $@
-
-$(srcdir)/ksetpass.1: $(srcdir)/ksetpass.pod
-	pod2man --release=$(VERSION) --center="User Commands" \
-	    $(srcdir)/ksetpass.pod > $@
-
 # Make maintainer-clean do the right thing rather than what GNU thinks it
 # should do.
 MAINTAINERCLEANFILES = Makefile.in aclocal.m4 build-aux/depcomp \
