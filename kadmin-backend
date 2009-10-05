@@ -710,6 +710,7 @@ sub ad_ldap_enable {
     }
     print MODIFY "dn: $dn\n";
     print MODIFY "changetype: modify\n";
+    print MODIFY "replace: userAccountcontrol\n";
     print MODIFY "userAccountControl: 512\n";
     close MODIFY;
     if ($? != 0) {
@@ -731,6 +732,7 @@ sub ad_ldap_disable {
     }
     print MODIFY "dn: $dn\n";
     print MODIFY "changetype: modify\n";
+    print MODIFY "replace: userAccountcontrol\n";
     print MODIFY "userAccountControl: 514\n";
     close MODIFY;
     if ($? != 0) {
