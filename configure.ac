@@ -5,10 +5,11 @@ dnl Copyright 2007, 2008 Board of Trustees, Leland Stanford Jr. University
 dnl
 dnl See LICENSE for licensing terms.
 
-AC_PREREQ([2.61])
-AC_INIT([kadmin-remctl], [2.3], [rra@stanford.edu])
+AC_PREREQ([2.64])
+AC_INIT([kadmin-remctl], [2.4], [rra@stanford.edu])
 AC_CONFIG_AUX_DIR([build-aux])
-AM_INIT_AUTOMAKE
+AC_CONFIG_MACRO_DIR([m4])
+AM_INIT_AUTOMAKE([1.11 check-news silent-rules])
 AM_MAINTAINER_MODE
 
 AC_PROG_CC
@@ -20,7 +21,6 @@ RRA_LIB_KRB5
 dnl Temporary hack until we use a proper error reporting library, since we may
 dnl not insist on -lcom_err if we have better error handling functions.
 LIBS="-lcom_err $LIBS"
-RRA_LIB_KRB5_SET
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_HEADER([config.h])

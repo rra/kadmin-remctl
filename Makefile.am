@@ -10,26 +10,19 @@ ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = LICENSE docs/design ksetpass.pod passwd_change.pod \
 	remctl/kadmin remctl/password
 
+# Globally build everything against the Kerberos libraries.
+AM_CPPFLAGS = $(KRB5_CPPFLAGS)
+AM_LDFLAGS = $(KRB5_LDFLAGS)
+
 bin_PROGRAMS = passwd_change ksetpass
-passwd_change_CPPFLAGS = $(REMCTL_CPPFLAGS)
-passwd_change_LDFLAGS = $(REMCTL_LDFLAGS)
-passwd_change_LDADD = $(REMCTL_LIBS)
+passwd_change_CPPFLAGS = $(REMCTL_CPPFLAGS) $(AM_CPPFLAGS)
+passwd_change_LDFLAGS = $(REMCTL_LDFLAGS) $(AM_LDFLAGS)
+passwd_change_LDADD = $(REMCTL_LIBS) $(KRB5_LIBS)
+ksetpass_LDADD = $(KRB5_LIBS)
 
 dist_sbin_SCRIPTS = kadmin-backend
 
 dist_man_MANS = passwd_change.1 kadmin-backend.8 ksetpass.1
-
-$(srcdir)/passwd_change.1: $(srcdir)/passwd_change.pod
-	pod2man --release=$(VERSION) --center="User Commands" \
-	    $(srcdir)/passwd_change.pod > $@
-
-$(srcdir)/kadmin-backend.8: $(srcdir)/kadmin-backend
-	pod2man --release=$(VERSION) --center="Administrative Commands" \
-	    --section=8 $(srcdir)/kadmin-backend > $@
-
-$(srcdir)/ksetpass.1: $(srcdir)/ksetpass.pod
-	pod2man --release=$(VERSION) --center="User Commands" \
-	    $(srcdir)/ksetpass.pod > $@
 
 # Make maintainer-clean do the right thing rather than what GNU thinks it
 # should do.
