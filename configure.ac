@@ -6,7 +6,7 @@ dnl
 dnl See LICENSE for licensing terms.
 
 AC_PREREQ([2.64])
-AC_INIT([kadmin-remctl], [2.3], [rra@stanford.edu])
+AC_INIT([kadmin-remctl], [2.4], [rra@stanford.edu])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([1.11 check-news silent-rules])
