@@ -2,13 +2,12 @@ Source: kadmin-remctl
 Section: net
 Priority: extra
 Maintainer: Russ Allbery <rra@debian.org>
-Build-Depends: debhelper (>= 5), perl, libremctl-dev, libkrb5-dev,
- comerr-dev
+Build-Depends: debhelper (>= 7.0.50~), comerr-dev, libkrb5-dev, libremctl-dev
 Standards-Version: 3.8.0
 
 Package: kadmin-remctl
 Architecture: any
-Depends: krb5-user, libexpect-perl, ${shlibs:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, krb5-user, libexpect-perl
 Recommends: kasetkey (>= 0.9), kstart, ldap-utils, libtext-template-perl,
  remctl-server
 Description: remctl backend providing kadmin functions
@@ -19,7 +18,7 @@ Description: remctl backend providing kadmin functions
 
 Package: password-change
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Client for Help Desk password changes
  Provides a command-line client for changing a user's password with
  prompts an authorized user to authenticate, verifies the user's identity
