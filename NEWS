@@ -1,5 +1,21 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 2.4 (2009-10-05)
+
+    When enabling or disabling accounts in Active Directory via LDAP, send
+    the required "replace: userAccountControl" portion of the LDIF.
+
+    Enable Automake silent rules.  For a quieter build, pass the
+    --enable-silent-rules option to configure or build with make V=0.
+
+    Update to rra-c-util 2.0:
+
+    * Sanity-check the results of krb5-config before proceeding.
+    * Fall back on manual probing if krb5-config results don't work.
+    * Don't break if the user clobbers CPPFLAGS or LDFLAGS at build time.
+    * Support Solaris 10's native generic GSS-API libraries.
+    * Require Autoconf 2.64 and Automake 1.11.
+
 kadmin-remctl 2.3 (2009-01-07)
 
     Properly add support for examining principals with instances we don't
