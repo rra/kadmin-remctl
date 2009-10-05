@@ -1,3 +1,10 @@
+kadmin-remctl (2.4-1) unstable; urgency=low
+
+  * New upstream release.
+    - Fix LDIF syntax when activing or deactivating AD accounts.
+
+ -- Russ Allbery <rra@debian.org>  Mon, 05 Oct 2009 16:13:02 -0700
+
 kadmin-remctl (2.3-1) unstable; urgency=low
 
   * New upstream release.
