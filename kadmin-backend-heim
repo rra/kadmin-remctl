@@ -1,0 +1,1588 @@
+#!/usr/bin/perl -w
+#
+# kadmin-backend -- remctl interface to kadmin functionality.
+#
+# Written by Russ Allbery <rra@stanford.edu>
+# Based heavily on work by Roland Schemers
+# Copyright 2003, 2007, 2008, 2009
+#     Board of Trustees, Leland Stanford Jr. University
+#
+# Permission to use, copy, modify, and distribute this software and its
+# documentation for any purpose and without fee is hereby granted, provided
+# that the above copyright notice appear in all copies and that both that
+# copyright notice and this permission notice appear in supporting
+# documentation, and that the name of Stanford University not be used in
+# advertising or publicity pertaining to distribution of the software without
+# specific, written prior permission.  Stanford University makes no
+# representations about the suitability of this software for any purpose.  It
+# is provided "as is" without express or implied warranty.
+#
+# THIS SOFTWARE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+##############################################################################
+# Modules and declarations
+##############################################################################
+
+use strict;
+
+use Heimdal::Kadm5 qw (KRB5_KDB_REQUIRES_PRE_AUTH KADM5_POLICY_NORMAL_MASK
+                       KRB5_KDB_DISALLOW_ALL_TIX KADM5_POLICY_CLR);
+use POSIX;
+use Expect ();
+
+# Disable sending of kadmin's output to our standard output.
+$Expect::Log_Stdout = 0;
+
+# Account used to test password strength.
+our $STRENGTH   = 'service/password-strength';
+
+# Path to the ACL file of who can change passwords.
+our $RESET_ACL  = '/etc/remctl/acl/password-reset';
+
+# Reserved principal names.
+our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
+
+# Paths to various programs.  By default, we search the current PATH.
+our $K5_KADMIN  = 'kadmin';
+our $K5_KPASSWD = 'kpasswd';
+our $K5START    = 'k5start';
+our $KASETKEY   = 'kasetkey';
+our $KSETPASS   = 'ksetpass';
+our $LDAPADD    = 'ldapadd';
+our $LDAPDELETE = 'ldapdelete';
+our $LDAPMODIFY = 'ldapmodify';
+our $LDAPSEARCH = 'ldapsearch';
+
+# Per-instance configuration.  Each key in this hash is an instance, with the
+# empty string used for a null instance.  Each value is a hash with the
+# following key/value pairs:
+#
+#     ad_config  => OpenLDAP config file for AD LDAP commands
+#     ad_group   => Group to which to add all accounts
+#     ad_keytab  => Keytab containing credentials for AD authentication
+#     ad_ldif    => Text::Template LDIF file used for AD account changes
+#     ad_realm   => Kerberos realm for Active Directory
+#     ad_setpass => Use ksetpass rather than LDAP for password setting
+#     afs_admin  => Principal for Kerberos v4 kasetkey authentication
+#     afs_fake   => Whether to fake Kerberos v4 kadmin output
+#     afs_srvtab => Srvtab for Kerberos v4 kasetkey authentication
+#     acl        => File listing principals that can manage this instance
+#     allowed    => Regex matching all permitted principal names (w/o instance)
+#     checking   => True if we should enable password strength checking
+#     k5_admin   => Principal for Kerberos v5 kadmin authentication
+#     k5_host    => Admin server for Kerberos v5 kadmin operations
+#     k5_keytab  => Keytab for Kerberos v5 kadmin authentication
+#     reset      => True if we should allow password resets
+#
+# No instances are configured by default.  In order for a particular instance
+# (including the empty instance) to be managed by this program, configuration
+# must be set for it.  The presence of ad_config enables Active Directory
+# propagation, afs_admin enables AFS kaserver, and k5_admin enables Kerberos
+# v5 kadmin.
+our %CONFIG     = ();
+
+# Load options from a configuration file, if present.
+if (-r "/etc/kadmin-remctl.conf") {
+    do "/etc/kadmin-remctl.conf"
+        or die (($@ || $!) . "\n");
+}
+
+# The help text.
+our $HELP = <<'EOH';
+Kerberos administrative remctl help:
+  kadmin change_passwd <user> <old> <new>       Change password for <user>
+  kadmin check_passwd <user> <password>         Check strength of password
+  kadmin create <user> <pass> enabled|disabled  Create <user> account
+  kadmin delete <user>                          Delete <user> account
+  kadmin disable <user>                         Disable <user> account
+  kadmin enable <user>                          Enable <user> account
+  kadmin examine <user>                         Show information for <user>
+  kadmin instance check <user> <inst>           Whether <user>/<inst> exists
+  kadmin instance create <user> <inst> <pass>   Create <user>/<inst> account
+  kadmin instance delete <user> <inst>          Delete <user>/<inst> account
+  kadmin instance list <inst>                   List all */<inst> accounts
+  kadmin instance reset <user> <inst> <pass>    Set password for <user>/<inst>
+  kadmin reset_passwd <user> <password>         Change password for <user>
+EOH
+
+##############################################################################
+# Utility functions
+##############################################################################
+
+# Check whether a given principal is present in an ACL.  Returns true if so,
+# false otherwise.  We handle remctl's include syntax and use a local hash to
+# protect against including the same file twice.
+sub check_acl_included {
+    my ($included, $acl, $principal) = @_;
+    open (ACL, '<', $acl) or die "error: cannot open $acl: $!\n";
+    local $_;
+    my $regex;
+    if ($principal =~ /\@/) {
+        $regex = qr/^\Q$principal\E\s/;
+    } else {
+        $regex = qr/^\Q$principal\E\@/;
+    }
+    while (<ACL>) {
+        if (/$regex/) {
+            return 1;
+        } elsif (/^\s*include\s+(\S+)/) {
+            die "error: recursive includes of $acl\n" if $included->{$1};
+            $included->{$1} = 1;
+            my $status = check_acl_included ($included, $1, $principal);
+            return 1 if $status;
+        }
+    }
+    close ACL;
+    return;
+}
+sub check_acl {
+    my %included;
+    return check_acl_included (\%included, @_);
+}
+
+# Check an instance and make sure it's one we're allowed to use.  It must
+# exist in the global instance hash and must be alphanumeric, and the account
+# running this script must be permitted to manage it if an explicit ACL is
+# set.
+sub check_instance {
+    my ($instance) = @_;
+    unless ($CONFIG{$instance}) {
+        if ($instance) {
+            die "error: invalid instance: $instance\n";
+        } else {
+            die "error: cannot manage principals without an instance\n";
+        }
+    }
+    my $acl = $CONFIG{$instance}{acl};
+    die "error: REMOTE_USER not set" unless $ENV{REMOTE_USER};
+    if ($acl && !check_acl ($acl, $ENV{REMOTE_USER})) {
+        die "error: $ENV{REMOTE_USER} not allowed to manage $instance"
+            . " instances\n";
+    }
+}
+
+# Check a principal and make sure it's one that we're allowed to use.
+sub check_principal {
+    my ($principal, $instance) = @_;
+    check_instance ($instance);
+    my $regex = $CONFIG{$instance}{allowed} || '^[a-z][0-9a-z]{2,7}\z';
+    if ($principal !~ /$regex/ || $RESERVED{$principal}) {
+        die "error: invalid principal: $principal\n";
+    }
+}
+
+# Check if we can use a password.  We have to do a bit of sanity checking even
+# though we're talking to Expect.
+sub check_password {
+    my ($password) = @_;
+    if ($password =~ /[\x00-\x08\x0a-\x1f]/) {
+        die "error: invalid control characters in password\n";
+    }
+}
+
+##############################################################################
+# Kerberos kadmin functions
+##############################################################################
+
+# Ensure that all of the necessary parameters for Kerberos v5 kadmin
+# operations are set and return true if this instance does kaserver
+# operations, false otherwise.
+sub kadmin_config {
+    my ($instance) = @_;
+    return unless $CONFIG{$instance}{k5_admin};
+    die "error: no keytab configured for Kerberos v5 kadmin changes\n"
+        unless $CONFIG{$instance}{k5_keytab};
+    return 1;
+}
+
+# Create a Heimdal::Kadm5 connection, loading configuration from the config
+# for an instance, and return that object.  Cache the client object for
+# any further calls. 
+sub kadmin_handle {
+    my ($instance) = @_;
+    return $CONFIG{$instance}{handle} if exists $CONFIG{$instance}{handle};
+
+    my $kadmin =  Heimdal::Kadm5::Client->new(
+	Principal   => "jonrober/admin",
+	Realm       => 'heimdal.stanford.edu',
+	#Principal   => $CONFIG{instance}{k5_admin},
+	#Keytab      => $CONFIG{instance}{k5_keytab},
+	RaiseErrors => 1,
+	);
+    $CONFIG{$instance}{handle} = $kadmin;
+    return $kadmin;
+}
+
+# Spawn a conversation with k5admin and return an Expect object.  Takes the
+# instance to get the right configuration.
+sub spawn_k5admin {
+    my ($instance) = @_;
+    my @args = ('-p', $CONFIG{$instance}{k5_admin}, '-k',
+                '-t', $CONFIG{$instance}{k5_keytab});
+    if ($CONFIG{$instance}{k5_host}) {
+        push (@args, '-s', $CONFIG{$instance}{k5_host});
+    }
+    my $k5admin = Expect->spawn ($K5_KADMIN, @args);
+    unless ($k5admin) {
+        die "error: cannot run $K5_KADMIN\n";
+    }
+    return $k5admin;
+}
+
+# Run a k5admin command and capture the output.  Return a list consisting of
+# the exit status and the output, or in a scalar context, just the exit
+# status.
+sub run_k5admin {
+    my ($instance, $command) = @_;
+    my @args = ('-p', $CONFIG{$instance}{k5_admin}, '-k',
+                '-t', $CONFIG{$instance}{k5_keytab}, '-q', $command);
+    if ($CONFIG{$instance}{k5_host}) {
+        push (@args, '-s', $CONFIG{$instance}{k5_host});
+    }
+    my $pid = open (K5ADMIN, '-|');
+    if (not defined $pid) {
+        die "error: cannot fork: $!\n";
+    } elsif ($pid == 0) {
+        open (STDERR, '>&STDOUT') or die "error: cannot dup stdout: $!\n";
+        exec ($K5_KADMIN, @args)
+            or die "error: cannot run $K5_KADMIN: $!\n";
+    }
+    local $_;
+    my @output;
+    while (<K5ADMIN>) {
+        push (@output, $_) unless /Authenticating as principal/;
+    }
+    close K5ADMIN;
+    my $status = ($? >> 8);
+    return wantarray ? ($status, join ('', @output)) : $status;
+}
+
+# Check whether a principal already exists in Kerberos.  Returns false if it
+# doesn't and true if it does.
+sub kadmin_check {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+    my $kadmin = kadmin_handle ($instance);
+    my @names = $kadmin->getPrincipals ($principal);
+    return 1 if @names;
+    return 0;
+}
+
+# Create a new principal using kadmin.  $status should be either enabled or
+# disabled and controls the initial account status.
+sub kadmin_create {
+    my ($principal, $instance, $password, $status) = @_;
+    check_principal ($principal, $instance);
+    check_password ($password);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+
+    my $kadmin = kadmin_handle ($instance);
+    my $princdata = eval { $kadmin->makePrincipal ($principal) };
+
+    my $attrs = $princdata->getAttributes;
+    $attrs |= KRB5_KDB_REQUIRES_PRE_AUTH;
+    if ($CONFIG{$instance}{checking}) {
+	$attrs |= KADM5_POLICY_NORMAL_MASK;
+    } else {
+	$attrs |= KADM5_POLICY_CLR;
+    }
+    if ($status ne 'enabled') {
+	$attrs |= KRB5_KDB_DISALLOW_ALL_TIX;
+    } else {
+	$attrs &= (~KRB5_KDB_DISALLOW_ALL_TIX);
+    }
+    $princdata->setAttributes ($attrs);
+
+    eval { $kadmin->createPrincipal ($princdata, $password, 0) };
+}
+
+# Delete a principal using kadmin.
+sub kadmin_delete {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+
+    my $kadmin = kadmin_handle ($instance);
+    my $retval = eval { $kadmin->deletePrincipal ($principal) };
+    if ($@) {
+	warn "error deleting $principal: $@";
+	exit 1;
+    }
+}
+
+# List all principals with a given instance using kadmin and return the
+# results as a string.
+sub kadmin_list {
+    my ($instance) = @_;
+    check_instance ($instance);
+    kadmin_config ($instance) or return '';
+    my $kadmin = kadmin_handle ($instance);
+    my @names = $kadmin->getPrincipals ("*/$instance@*");
+    return join ("\n", @names);
+}
+
+# Disable a principal using kadmin.
+sub kadmin_disable {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+
+    my $kadmin = kadmin_handle ($instance);
+    eval { $kadmin->disablePrincipal ($principal) };
+    if ($@) {
+	warn "error: $@\n";
+	exit 1;
+    }
+}
+
+# Enable a principal using kadmin.
+sub kadmin_enable {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+
+    my $kadmin = kadmin_handle ($instance);
+    eval { $kadmin->enablePrincipal ($principal) };
+    if ($@) {
+	warn "error: $@\n";
+	exit 1;
+    }
+}
+
+# The K5 kadmin interface doesn't support checking the strength of a password
+# without trying to change a password.  We therefore test the strength of a
+# password by changing the password of a designated special account (which is
+# also set DISABLE_ALL_TIX) with the same password policy as our user accounts
+# and seeing if the password is accepted.
+#
+# On success, do nothing.  On failure, print the error message from K5 kadmin.
+# We don't die here because of weird interface requirements.
+sub kadmin_validate {
+    my ($principal, $instance, $password) = @_;
+    check_password ($password);
+    my $kadmin = kadmin_handle ($instance);
+    eval { $kadmin->changePassword ($STRENGTH, $password) };
+
+    # TODO: Need to check $@ and do some explicit messages based on contents.
+    if ($@) {
+	warn "error testing password strength: $@\n";
+    } else {
+	eval { $kadmin->randKeyPrincipal ($STRENGTH) };
+    }
+}
+
+# Reset a password via kadmin.
+sub kadmin_reset {
+    my ($principal, $instance, $password) = @_;
+    check_principal ($principal, $instance);
+    check_password ($password);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+
+    my $kadmin = kadmin_handle ($instance);
+    eval { $kadmin->changePassword ($instance, $password) };
+    if ($@) {
+	warn "error: $@\n";
+	exit 1;
+    }
+}
+
+##############################################################################
+# kpasswd functions
+##############################################################################
+
+# Change a password via kpasswd.  This is always used for the change_passwd
+# interface and we assume that kpasswd can do the right thing, since it works
+# for both Active Directory and for MIT or Heimdal Kerberos.
+sub kpasswd {
+    my ($principal, $instance, $old, $new) = @_;
+    check_principal ($principal, $instance);
+    check_password ($old);
+    check_password ($new);
+    $principal = "$principal/$instance" if $instance;
+    my $kpasswd = Expect->spawn ($K5_KPASSWD, $principal);
+    unless ($kpasswd) {
+        die "error: cannot run $K5_KPASSWD\n";
+    }
+    unless ($kpasswd->expect (2, 'Password for')) {
+        die "error: cannot talk to $K5_KPASSWD\n";
+    }
+    $kpasswd->send ($old . "\n");
+    my ($num, $error, $match, $before, $after)
+        = $kpasswd->expect (2, 'kpasswd: ', 'Enter new password: ');
+    if ($num == 1) {
+        $after =~ s/\r?\n.*//s;
+        warn "error: $after\n";
+        print "retstr: $after\n";
+        exit 1;
+    } elsif ($error) {
+        die "error: Expect said $error\n";
+    }
+    $kpasswd->send ($new . "\n");
+    unless ($kpasswd->expect (2, 'Enter it again: ')) {
+        die "error: cannot talk to $K5_KPASSWD\n";
+    }
+    $kpasswd->send ($new . "\n");
+    ($num, $error, $match, $before, $after)
+        = $kpasswd->expect (30, 'Password change rejected: ',
+                            'Password changed.');
+    if ($num == 1) {
+        $after =~ s/\..*//s;
+        $after =~ s/\r?\n/ /g;
+        $after =~ s/\s+See the kpasswd man page.*//s;
+        warn "error: $after\n";
+        print "retstr: $after\n";
+        exit 1;
+    } elsif ($error) {
+        die "error: Expect said $error\n";
+    } else {
+        $kpasswd->soft_close;
+    }
+}
+
+##############################################################################
+# Active Directory functions
+##############################################################################
+
+# Check the configuration for Active Directory and make changes as needed for
+# a particular instance.  Does nothing if the ad_config attribute isn't set in
+# the instance hash.  Returns true if AD propagation is configured for that
+# instance, false otherwise.
+sub ad_config {
+    my ($instance) = @_;
+    return unless $CONFIG{$instance}{ad_config};
+    die "error: no LDIF configured for AD account changes\n"
+        unless $CONFIG{$instance}{ad_ldif};
+    die "error: no keytab configured for AD account changes\n"
+        unless $CONFIG{$instance}{ad_keytab};
+    my $config = $CONFIG{$instance}{ad_config};
+    if (!$ENV{LDAPCONF} || $ENV{LDAPCONF} ne $config) {
+        $ENV{LDAPCONF} = $config;
+    }
+    require Encode;
+    require MIME::Base64;
+    require Text::Template;
+    import Encode 'encode';
+    import MIME::Base64 'encode_base64';
+    return 1;
+}
+
+# Form an Active Directory command.  Takes the instance and the command to run
+# and wraps it with the necessary k5start bits for authentication.  Requires
+# the instance to find the right AD configuration.
+sub ad_command {
+    my ($instance, @args) = @_;
+    my @command = ($K5START, '-Uqf', $CONFIG{$instance}{ad_keytab});
+    if ($CONFIG{$instance}{ad_realm}) {
+        push (@command, '-r', $CONFIG{$instance}{ad_realm});
+    }
+    push (@command, '--', @args);
+    return @command;
+}
+
+# Reset a password using ksetpass.  Note that we don't have to check the
+# password since we can set any password.
+sub ksetpass {
+    my ($principal, $instance, $password) = @_;
+    check_principal ($principal, $instance);
+    if ($CONFIG{$instance}{ad_realm}) {
+        $principal .= '@' . $CONFIG{$instance}{ad_realm};
+    }
+    my @command = ad_command ($instance, $KSETPASS, $principal);
+    my $try = 1;
+    do {
+        sleep 1 if $try > 1;
+        my $pid = open (SETPASS, '|-', @command);
+        unless ($pid) {
+            die "error: cannot execute ksetpass: $!\n";
+        }
+        print SETPASS $password;
+        close SETPASS;
+    } while ($try++ < 5 && $? != 0);
+    if ($? != 0) {
+        warn "error: ksetpass of $principal failed\n";
+        return;
+    }
+    return 1;
+}
+
+# Determine the dn for a principal in AD, used for both adding those
+# principals to groups and deleting them.  In order to figure out the dn, we
+# read the dn: line out of the LDIF file for this instance and then use
+# Text::Template to build our DN.
+sub ad_find_dn {
+    my ($principal, $instance) = @_;
+    my $source = $CONFIG{$instance}{ad_ldif};
+    open (SOURCE, '<', $source)
+        or die "error: cannot open $source: $!\n";
+    local $_;
+    my $dn;
+    while (<SOURCE>) {
+        next unless /^dn:\s+/;
+        chomp;
+        $dn = $_;
+        while (<SOURCE>) {
+            last unless /^\s/;
+            s/^\s+//;
+            $dn .= $_;
+        }
+    }
+    close SOURCE;
+    die "error: cannot determine account DN for delete\n" unless $dn;
+    $dn =~ s/^dn: //;
+    $dn =~ s/\s+$//;
+    my $template = Text::Template->new (TYPE => 'STRING', SOURCE => $dn)
+        or die "error: cannot build DN template: $Text::Template::ERROR\n";
+    my %vars = (principal => $principal, instance => $instance);
+    $dn = $template->fill_in (HASH => \%vars);
+    unless (defined $dn) {
+        die "error: cannot create DN: $Text::Template::ERROR\n";
+    }
+    return $dn;
+}
+
+# Check whether an account already exists in Active Directory.  Takes the
+# principal and the instance and returns true if the user exists, false
+# otherwise.
+sub ad_ldap_exists {
+    my ($principal, $instance) = @_;
+    if ($principal =~ /[\'\\]/) {
+        die "error: invalid user name $principal\n";
+    }
+    $principal = "$principal.$instance" if $instance;
+    ad_config ($instance) or return;
+    my @command = ad_command ($instance, $LDAPSEARCH, '-Q', '-LLL');
+    my $output = `@command 'samaccountname=$principal'`;
+    return ($output ne '') ? 1 : 0;
+}
+
+# Add an account to an Active Directory authorization group.
+sub ad_group_add {
+    my ($principal, $instance) = @_;
+    ad_config ($instance) or return;
+    my $dn = ad_find_dn ($principal, $instance);
+    my $group = $CONFIG{$instance}{ad_group} or return;
+    my @command = ad_command ($instance, $LDAPMODIFY, '-Q');
+    my $pid = open (MODIFY, '|-', @command);
+    unless ($pid) {
+        die "error: cannot execute ldapmodify: $!\n";
+    }
+    print MODIFY "dn: $group\n";
+    print MODIFY "changetype: modify\n";
+    print MODIFY "add: member\n";
+    print MODIFY "member: $dn\n";
+    print MODIFY "-\n";
+    close MODIFY;
+    if ($? != 0) {
+        die "error: ldapmodify of account in AD failed: $?\n";
+    }
+}
+
+# Create a new account in Active Directory by instantiating the Text::Template
+# template to create the LDIF and then passing that to ldapadd.
+sub ad_ldap_create {
+    my ($principal, $instance, $password, $status) = @_;
+    check_principal ($principal, $instance);
+    check_password ($password);
+    ad_config ($instance) or return;
+    my $source = $CONFIG{$instance}{ad_ldif};
+    my $template = Text::Template->new (TYPE => 'FILE', SOURCE => $source)
+        or die "error: could not create LDIF: $Text::Template::ERROR\n";
+    my $b64pass = encode_base64 (encode ('ucs-2le', qq{"$password"}));
+    chomp $b64pass;
+    my $control = ($status eq 'enabled' ? 512 : 514);
+    if ($CONFIG{$instance}{ad_setpass} && $control == 512) {
+        $control = 514;
+    }
+    my %vars = (principal => $principal,
+                instance  => $instance,
+                password  => $b64pass,
+                control   => $control);
+    my $result = $template->fill_in (HASH => \%vars);
+    unless (defined $result) {
+        die "error: could not create LDIF: $Text::Template::ERROR\n";
+    }
+    my @command = ad_command ($instance, $LDAPADD, '-Q');
+    my $pid = open (ADD, '|-', @command);
+    unless ($pid) {
+        die "error: cannot execute ldapadd: $!\n";
+    }
+    print ADD $result;
+    close ADD;
+    if ($? != 0) {
+        die "error: ldapadd of account to AD failed: $?\n";
+    }
+    if ($CONFIG{$instance}{ad_setpass}) {
+        unless (ksetpass ($principal, $instance, $password)) {
+            ad_ldap_delete ($principal, $instance);
+            my $full = $principal;
+            $full .= "/$instance" if $instance;
+            die "error: ksetpass for $full failed\n";
+        }
+        if ($status eq 'enabled') {
+            ad_ldap_enable ($principal, $instance);
+        }
+    }
+    if ($CONFIG{$instance}{ad_group}) {
+        ad_group_add ($principal, $instance);
+    }
+}
+
+# Delete a user account out of Active Directory.  Takes the principal and
+# instance.
+sub ad_ldap_delete {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    ad_config ($instance) or return;
+    my $dn = ad_find_dn ($principal, $instance);
+    my @command = ad_command ($instance, $LDAPDELETE, '-Q');
+    system (@command, $dn) == 0
+        or die "error: ldapdelete of account in AD failed\n";
+}
+
+# Enable an account in Active Directory by setting the userAccountControl to
+# 512.  We don't currently handle any other flags.
+sub ad_ldap_enable {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    ad_config ($instance) or return;
+    my $dn = ad_find_dn ($principal, $instance);
+    my @command = ad_command ($instance, $LDAPMODIFY, '-Q');
+    my $pid = open (MODIFY, '|-', @command);
+    unless ($pid) {
+        die "error: cannot execute ldapmodify: $!\n";
+    }
+    print MODIFY "dn: $dn\n";
+    print MODIFY "changetype: modify\n";
+    print MODIFY "replace: userAccountcontrol\n";
+    print MODIFY "userAccountControl: 512\n";
+    close MODIFY;
+    if ($? != 0) {
+        die "error: ldapmodify to enable account failed\n";
+    }
+}
+
+# Disable an account in Active Directory by setting the userAccountControl to
+# 514.  We don't currently handle any other flags.
+sub ad_ldap_disable {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    ad_config ($instance) or return;
+    my $dn = ad_find_dn ($principal, $instance);
+    my @command = ad_command ($instance, $LDAPMODIFY, '-Q');
+    my $pid = open (MODIFY, '|-', @command);
+    unless ($pid) {
+        die "error: cannot execute ldapmodify: $!\n";
+    }
+    print MODIFY "dn: $dn\n";
+    print MODIFY "changetype: modify\n";
+    print MODIFY "replace: userAccountcontrol\n";
+    print MODIFY "userAccountControl: 514\n";
+    close MODIFY;
+    if ($? != 0) {
+        die "error: ldapmodify to disable account failed\n";
+    }
+}
+
+# Reset a password in Active Directory using ksetpass.
+sub ad_reset {
+    my ($principal, $instance, $password) = @_;
+    check_principal ($principal, $instance);
+    ad_config ($instance) or return;
+    ksetpass ($principal, $instance, $password) or exit 1;
+}
+
+##############################################################################
+# Kerberos v4 kadmin and AFS kaserver functions
+##############################################################################
+
+# Ensure that all of the necessary parameters for AFS kaserver manipulation
+# are set and return true if this instance does kaserver operations, false
+# otherwise.
+sub kaserver_config {
+    my ($instance) = @_;
+    return unless $CONFIG{$instance}{afs_admin};
+    die "error: no srvtab configured for AFS kaserver changes\n"
+        unless $CONFIG{$instance}{afs_srvtab};
+    return 1;
+}
+
+# Run a kasetkey command and return the exit status.  Takes the instance as
+# the first parameter to find the right configuration and returns a list
+# consisting of the exit status and the output, or in a scalar context, just
+# the exit status.
+sub run_kasetkey {
+    my ($instance, @args) = @_;
+    my @command = ($KASETKEY, '-k', $CONFIG{$instance}{afs_srvtab},
+                   '-a', $CONFIG{$instance}{afs_admin}, @args);
+    my $pid = open (KASETKEY, '-|');
+    if (not defined $pid) {
+        die "error: cannot fork: $!\n";
+    } elsif ($pid == 0) {
+        open (STDERR, '>&STDOUT') or die "error: cannot dup stdout: $!\n";
+        exec (@command)
+            or die "error: cannot run $KASETKEY: $!\n";
+    }
+    local $_;
+    my @output;
+    push (@output, $_) while <KASETKEY>;
+    close KASETKEY;
+    my $status = ($? >> 8);
+    return wantarray ? ($status, join ('', @output)) : $status;
+}
+
+# Create a new Kerberos v4 account with a random password and set its status.
+# We assume that the creation of the account elsewhere will reset the password
+# in Kerberos v4.
+sub kaserver_create {
+    my ($principal, $instance, $password, $status) = @_;
+    check_principal ($principal, $instance);
+    check_password ($password);
+    kaserver_config ($instance) or return;
+    $principal = "$principal.$instance" if $instance;
+    my ($code, $output) = run_kasetkey ($instance, '-r', '-s', $principal);
+    if ($code != 0) {
+        $output =~ s/\n.*//;
+        die "error: cannot create K4 principal for $principal: $output\n";
+    }
+    if ($status ne 'enabled') {
+        ($code, $output) = run_kasetkey ($instance, '-n', '-s', $principal);
+        if ($code != 0) {
+            $output =~ s/\n.*//;
+            die "error: cannot disable K4 principal for $principal: $output\n";
+        }
+    }
+}
+
+# Delete a Kerberos v4 principal.
+sub kaserver_delete {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    kaserver_config ($instance) or return;
+    $principal = "$principal.$instance" if $instance;
+    my ($status, $output) = run_kasetkey ($instance, '-D', $principal);
+    if ($status != 0) {
+        $output =~ s/\n.*//;
+        die "error: cannot delete $principal in Kerberos v4: $output\n";
+    }
+}
+
+# Disable a Kerberos v4 principal.
+sub kaserver_disable {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    kaserver_config ($instance) or return;
+    $principal = "$principal.$instance" if $instance;
+    my ($status, $output) = run_kasetkey ($instance, '-n', '-s', $principal);
+    if ($status != 0) {
+        $output =~ s/\n.*//;
+        die "error: cannot disable $principal in Kerberos v4: $output\n";
+    }
+}
+
+# Enable a Kerberos v4 principal.
+sub kaserver_enable {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    kaserver_config ($instance) or return;
+    $principal = "$principal.$instance" if $instance;
+    my ($status, $output) = run_kasetkey ($instance, '-t', '-s', $principal);
+    if ($status != 0) {
+        $output =~ s/\n.*//;
+        die "error: cannot enable $principal in Kerberos v4: $output\n";
+    }
+}
+
+##############################################################################
+# Password changes and strength checking
+##############################################################################
+
+# Reset a password.  The only tricky part here is that we have to be sure that
+# we're not resetting the password of a privileged account.  No user who can
+# themselves reset passwords is allowed to have their password changed by this
+# interface.  So first, we have to validate that.
+sub reset_password {
+    my ($principal, $instance, $password) = @_;
+    check_principal ($principal, $instance);
+    check_password ($password);
+    unless ($CONFIG{$instance}{reset}) {
+        die "error: password reset not permitted for $instance instances\n";
+    }
+    my $full = $principal;
+    $full .= "/$instance" if $instance;
+    if (check_acl ($RESET_ACL, $full)) {
+        warn "error: password changes not permitted for that user\n";
+        exit 2;
+    }
+    if ($CONFIG{$instance}{k5_admin}) {
+        kadmin_reset ($principal, $instance, $password);
+    } elsif ($CONFIG{$instance}{ad_config}) {
+        ad_reset ($principal, $instance, $password);
+    }
+}
+
+# Change a user's password given the old password.  We do this by spawning
+# kpasswd and talking to it via Expect since that's the easiest way to make
+# sure that we've validated the old password and everything is working
+# properly.  Currently, we don't do anything here except call kpasswd and
+# assume that any further propagation is handled on the server side.
+sub change_password {
+    my ($principal, $instance, $old, $new) = @_;
+    check_principal ($principal, $instance);
+    check_password ($old);
+    check_password ($new);
+    kpasswd ($principal, $instance, $old, $new);
+}
+
+##############################################################################
+# Principal creation and deletion
+##############################################################################
+
+# Create a principal.  First, create a K4 account with a random password and
+# set its status.  Then, create the account in Active Directory and in K5,
+# which will reset the password in K4.  $status is either enabled or disabled
+# and controls the initial account status.
+sub create_principal {
+    my ($principal, $instance, $password, $status) = @_;
+    check_principal ($principal, $instance);
+    check_password ($password);
+    if (kadmin_check ($principal, $instance)) {
+        warn "error: account $principal/$instance already exists\n";
+        print "retstr: account $principal/$instance already exists\n";
+        exit 1;
+    }
+    kaserver_create ($principal, $instance, $password, $status);
+    unless (ad_ldap_exists ($principal, $instance)) {
+        ad_ldap_create ($principal, $instance, $password, $status);
+    }
+    kadmin_create ($principal, $instance, $password, $status);
+}
+
+# Delete a principal.
+sub delete_principal {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    kaserver_delete ($principal, $instance);
+    if (ad_ldap_exists ($principal, $instance)) {
+        ad_ldap_delete ($principal, $instance);
+    }
+    kadmin_delete ($principal, $instance);
+}
+
+##############################################################################
+# Enabling and disabling principals
+##############################################################################
+
+# Disable a principal.  This must be done separately in K5 and K4, but only
+# needs to be done in Active Directory if there is no K5 configuration.
+sub disable_principal {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    if ($CONFIG{$instance}{k5_admin}) {
+        kadmin_disable ($principal, $instance);
+    } elsif ($CONFIG{$instance}{ad_config}) {
+        ad_ldap_disable ($principal, $instance);
+    }
+    kaserver_disable ($principal, $instance);
+}
+
+# Enable a principal.  This must be done separately in K5 and K4, but only
+# needs to be done in Active Directory if there is no K5 configuration.
+# Eventually, this should also check a database for locked status to prevent
+# accounts from being enabled when we've administratively disabled them.
+sub enable_principal {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    if ($CONFIG{$instance}{k5_admin}) {
+        kadmin_enable ($principal, $instance);
+    } elsif ($CONFIG{$instance}{ad_config}) {
+        ad_ldap_enable ($principal, $instance);
+    }
+    kaserver_enable ($principal, $instance);
+}
+
+##############################################################################
+# Examining principals
+##############################################################################
+
+# Check whether a given principal exists.  We only handle K5 and Active
+# Directory here, not K4.
+sub exists_principal {
+    my ($principal, $instance) = @_;
+    check_principal ($principal, $instance);
+    my $status;
+    if ($CONFIG{$instance}{k5_admin}) {
+        $status = kadmin_check ($principal, $instance);
+    } elsif ($CONFIG{$instance}{ad_config}) {
+        $status = ad_ldap_exists ($principal, $instance);
+    }
+    if ($status) {
+        print "$principal/$instance exists\n";
+    } else {
+        print "$principal/$instance does not exist\n";
+        exit 1;
+    }
+}
+
+# Examine a principal.  We have to keep the format the same for right now or
+# risk breaking Regadmin.  First, examine in Kerberos v4, and then examine in
+# Kerberos v5.  Be sure that the two sections are separated by a line of 40
+# dashes.
+#
+# This is the only place where we allow complex instances and don't check that
+# the instance is valid, principals with null instances, so we have to use a
+# separate version of check_principal.  Principals with instances must be
+# specified in the K5 format and will be converted to K4.
+sub examine_principal {
+    my ($principal, $instance) = @_;
+    $instance ||= '';
+    unless ($CONFIG{$instance} or $CONFIG{''}) {
+        die "error: invalid instance $instance\n";
+    }
+    my $regex;
+    if ($CONFIG{$instance}) {
+        $regex = $CONFIG{$instance}{allowed} || '^[-a-zA-Z0-9]+\z';
+    } else {
+        $regex = '^[-a-zA-Z0-9]+\z';
+    }
+    unless ($principal =~ /$regex/ and $instance =~ m%^([a-zA-Z0-9._-]+)?\z%) {
+        die "error: invalid character in principal name\n";
+    }
+    $principal = "$principal/$instance" if $instance;
+    $instance = '' unless $CONFIG{$instance};
+    if ($CONFIG{$instance}{afs_admin} && !$CONFIG{$instance}{afs_fake}) {
+        my $k4principal = $principal;
+        $k4principal =~ s%\.[^/]*$%%;
+        $k4principal =~ s%^host/%rcmd/%;
+        $k4principal =~ s%(^[^/]*/[^/]*)/.*%$1%;
+        $k4principal =~ s%/%.%;
+        my ($code, $output) = run_kasetkey ($instance, '-e', $k4principal);
+
+        # Hack hack hack.  This interface is so idiotic.
+        if ($code != 0 && $output =~ /no such entry/) {
+            $output = "error: No such entry in the database (-1783126247)\n";
+        } elsif ($code != 0) {
+            $output = "error: $output";
+        } else {
+            $output = "retstr: $output\n";
+        }
+        print $output, '-' x 40, "\n";
+    }
+
+    # Replicate kadmin getprinc.  Heimdal::Kadm5 only does a dump, not a 
+    # formatted view.
+    my $kadmin = kadmin_handle ($instance);
+    my $princdata = $kadmin->getPrincipal ($principal);
+    my $output = '';
+    open (FH, '>', \$output) or die "error opening handle for printing: $!\n";
+    $princdata->dump (\*FH);
+    close FH;
+
+    if ($CONFIG{$instance}{afs_fake}) {
+        my $k4output;
+	if (!defined $princdata || !$princdata) {
+            $k4output = 'error: No such entry in the database (-1783126247)';
+        } else {
+            # TODO - Get KRB5_KDB_DISALLOW_ALL_TIX out of $bitmask.
+            my $bitmask = $princdata->getAttributes ();
+            if ($output =~ /DISALLOW_ALL_TIX/) {
+                $k4output = "retstr: status: disabled\n";
+            } else {
+                $k4output = "retstr: status: enabled\n";
+            }
+            $k4output .= "account expiration: never\n";
+            my $pwchange = $princdata->getLastPwdChange ();
+            if ($pwchange) {
+		my $date = strftime ("%a %b %d %T %Y", localtime($pwchange));
+                $k4output .= "password last changed: $date\n";
+            }
+            my $admin = $princdata->getModName ();
+            my $modified = $princdata->getModDate ();
+            if ($admin && $modified) {
+		my $date = strftime ("%a %b %d %T %Y", localtime($modified));
+                $k4output .= "modification time: $date\n";
+                $k4output .= "modified by: $admin\n";
+            }
+        }
+        $output = $k4output . "\n" . ('-' x 40) . "\n" . $output;
+    }
+    print "$output";
+}
+
+##############################################################################
+# Main routine
+##############################################################################
+
+# Flush all output immediately, since old Perl doesn't do this for us.
+$| = 1;
+
+my $cmd = shift;
+
+if ($cmd eq 'change_passwd') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $old   = shift or die "error: missing old password\n";
+    my $new   = shift or die "error: missing new password\n";
+
+    change_password ($princ, '', $old, $new);
+
+} elsif ($cmd eq 'check_passwd') {
+
+    # The principal is accepted for compatibilty with older versions but
+    # completely ignored.
+    my $princ = shift;
+    my $pass  = shift or die "error: missing password\n";
+
+    kadmin_validate ('', '', $pass);
+
+} elsif ($cmd eq 'create') {
+
+    my $princ  = shift or die "error: missing principal\n";
+    my $pass   = shift or die "error: missing password\n";
+    my $status = shift or die "error: missing enabled/disabled\n";
+    if ($status ne 'enabled' && $status ne 'disabled') {
+        die "error: invalid status: $status\n";
+    }
+
+    create_principal ($princ, '', $pass, $status);
+
+} elsif ($cmd eq 'delete') {
+
+    my $princ = shift or die "error: missing principal\n";
+
+    delete_principal ($princ, '');
+
+} elsif ($cmd eq 'disable') {
+
+    my $princ = shift or die "error: missing principal\n";
+
+    disable_principal ($princ, '');
+
+} elsif ($cmd eq 'enable') {
+
+    my $princ = shift or die "error: missing principal\n";
+
+    enable_principal ($princ, '');
+
+} elsif ($cmd eq 'examine') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $inst;
+
+    ($princ, $inst) = split ('/', $princ);
+    examine_principal ($princ, $inst);
+
+} elsif ($cmd eq 'help') {
+
+    print $HELP;
+
+} elsif ($cmd eq 'reset_passwd' or $cmd eq 'reset') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $pass  = shift or die "error: missing password\n";
+
+    reset_password ($princ, '', $pass);
+
+} elsif ($cmd eq 'instance') {
+
+    my $subcmd = shift;
+
+    if ($subcmd eq 'check') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+
+        exists_principal ($princ, $inst);
+
+    } elsif ($subcmd eq 'create') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+        my $pass  = shift or die "error: missing password\n";
+
+        create_principal ($princ, $inst, $pass, 'enabled');
+
+    } elsif ($subcmd eq 'delete') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+
+        delete_principal ($princ, $inst);
+
+    } elsif ($subcmd eq 'disable') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+
+        disable_principal ($princ, $inst);
+
+    } elsif ($subcmd eq 'enable') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+
+        enable_principal ($princ, $inst);
+
+    } elsif ($subcmd eq 'list') {
+
+        my $inst  = shift or die "error: missing instance\n";
+
+        print kadmin_list ($inst);
+
+    } elsif ($subcmd eq 'reset') {
+
+        my $princ = shift or die "error: missing principal\n";
+        my $inst  = shift or die "error: missing instance\n";
+        my $pass  = shift or die "error: missing password\n";
+
+        reset_password ($princ, $inst, $pass);
+
+    } else {
+        die "error: unknown cmd: $cmd $subcmd\n";
+    }
+} else {
+    die "error: unknown cmd: $cmd\n";
+}
+
+exit 0;
+
+##############################################################################
+# Documentation
+##############################################################################
+
+=head1 NAME
+
+kadmin-backend - remctl interface to kadmin functionality
+
+=head1 SYNOPSIS
+
+B<kadmin-backend> change_passwd I<user> I<old> I<new>
+
+B<kadmin-backend> check_passwd I<user> I<password>
+
+B<kadmin-backend> create I<user> I<password> (enabled | disabled)
+
+B<kadmin-backend> (delete | disable | enable | examine) I<user>
+
+B<kadmin-backend> (reset_passwd | reset) I<user> I<password>
+
+B<kadmin-backend> instance check I<user> I<instance>
+
+B<kadmin-backend> instance create I<user> I<instance> I<password>
+
+B<kadmin-backend> instance delete I<user> I<instance>
+
+B<kadmin-backend> instance list I<instance>
+
+B<kadmin-backend> instance reset I<user> I<instance> I<password>
+
+=head1 DESCRIPTION
+
+This script provides an interface to the same functionality provided by
+B<kadmin>, but it also takes appropriate action to synchronize changes
+with the AFS kaserver Kerberos v4 realm and with Active Directory where
+appropriate or necessary.  It also provides some additional functions that
+B<kadmin> doesn't provide directly and has separate functions for handling
+account instances (principals in the form I<principal>/I<instance>).
+
+All of these functions except for C<examine> and the C<instance> functions
+by default only accept principals with no instances or realms, and that
+consist of three to eight characters starting with a lowercase letter and
+containing only digits and lowercase letters.  This can be overridden in
+the configuration.  C<instance> functions require a principal that fits
+the same requirements and an instance that starts with a letter and
+contains only lowercase alphanumeric characters.  Principals may also be
+rejected if they're reserved, and explicit configuration is required for
+each instance (including the empty instance, for principals without an
+instance).
+
+Whether an action will be performed in Kerberos v5, Active Directory, or
+an AFS kaserver Kerberos v4 realm or some combination of the three is
+determined by the configuration.
+
+The C<instance> functions should only be used to manage instances that
+have regular passwords.  Instances used by automated processes via keytabs
+should be managed via a different mechanism.  All C<instance> functions
+support additional ACL checking beyond the authorization rules of
+B<remctld> to verify that the remote user is allowed to manage that
+particular instance.
+
+The C<change_passwd> function changes a user's password given the current
+password.  It is equivalent to B<kpasswd> but only works on the restricted
+set of users as described above.
+
+The C<check_passwd> function performs strength checking against the given
+password without changing the password.  I<user> is required for backward
+compatibility but is ignored.  This function will exit successfully (exit
+status of 0) regardless of whether the password is acceptable; a non-zero
+exit status is only used for an internal error.  If the password is
+acceptable, there is no output; if the password is not acceptable, the
+reason for its rejection is printed to standard output prefixed with
+C<retstr:> and a space.
+
+The C<create> function creates a new principal with the given password.
+If the third argument is C<enabled>, the new account is created enabled.
+If C<disabled>, the new account is created with DISALLOW_ALL_TIX set in
+Kerberos v5, NOTGS in the AFS kaserver, and a userAccountControl of 514 in
+Active Directory.
+
+The C<delete> function deletes the given principal.
+
+The C<disable> function sets DISALLOW_ALL_TIX on the principal in Kerberos
+v5, NOTGS in the AFS kaserver, or a userAccountControl of 514 in Active
+Directory.
+
+The C<enable> function clears DISALLOW_ALL_TIX on the principal in Kerberos
+v5, NOTGS in the AFS kaserver, or sets a userAccountControl of 512 in
+Active Directory.
+
+The C<examine> function prints out information about the principal in
+Kerberos v5 and, if configured, the AFS kaserver.  It does not support
+Active Directory.  This is the only function that accepts principals with
+instances.  If AFS kaserver support is configured, it attempts to convert
+principals with an instance into their Kerberos v4 equivalent before
+looking them up there.  The output format for the AFS kaserver is the same
+as the old Kerberos v4 B<kadmin> output, and the output for Kerberos v5 is
+the result of B<kadmin getprinc>.  A line of 40 dashes separates the first
+from the second if AFS kaserver support is configured.
+
+The C<help> function prints out a summary of supported functions and their
+arguments.
+
+The C<reset_passwd> function changes the password for a given principal
+without requiring knowledge of the old password.  Changing the password of
+a user who can themselves reset passwords is not permitted.  C<reset> is
+supported as a synonym (used primarily with a separate password reset
+service).
+
+The C<instance check> function prints a message and returns 0 if that
+combination of principal and instance exists, or a different message and
+returns 1 if the instance does not exist.
+
+The C<instance create> function creates a new I<principal>/I<instance>
+Kerberos principal, provided that it doesn't already exist, and sets its
+password to the provided password.  This principal may or may not have
+password checking enabled, depending on the configuration for that instance.
+
+The C<instance delete> function deletes a I<principal>/I<instance> Kerberos
+principal.
+
+The C<instance list> function lists all Kerberos principals with the given
+instance.  This function only supports Kerberos v5, not Active Directory.
+Note that this list may contain service principals and other reserved
+principals that cannot be managed through this interface.
+
+The C<instance reset> function resets the password for a given
+I<principal>/I<instance> Kerberos principal, provided that password resets
+are allowed for that instance type in the B<kadmin-backend> configuration.
+
+This script is normally run via B<remctld> with different ACLs on each
+supported function.  C<reset_passwd> is a special case and should normally
+be run via a separate instance of B<remctld> listening on a different port
+and using a principal for authentication that disallows TGT-based service
+tickets and has a short lifetime.
+
+=head1 CONFIGURATION
+
+If the file F</etc/kadmin-remctl.conf> exists, B<kadmin-backend> will load
+it after setting its configuration defaults.  This file must be used to
+configure B<kadmin-backend>; without configuration, it will not take any
+actions for most functions.  The configuration file must be valid Perl
+syntax and should normally consist only of variable settings.  The
+following Perl variables may be set:
+
+=over 4
+
+=item %CONFIG
+
+This is the general configuration for how each type of principal should be
+handled.  Every instance managed by this installation of B<kadmin-backend>
+needs to be configured here.  Each key of this hash should be the name of
+an instance (possibly C<''> for the empty instance).  The values for a key
+of C<''> will be used when examining principals with unknown instances,
+and if there is no configuration for C<''>, examining such principals will
+not be allowed.
+
+Each value should be a hash containing one or more of the following keys:
+
+=over 2
+
+=item ad_config
+
+Points to an OpenLDAP configuration file that's used for propagation of
+instance creation into Active Directory.  If this key isn't set for an
+instance, no propagation into Active Directory will be attempted.  This
+configuration file should set the LDAP server and any other required
+properties.  An example:
+
+    URI ldaps://dc1.example.org/
+    BASE ou=accounts,dc=windows,dc=example,dc=org
+    TLS_CACERT /etc/krb5kdc/ad-root-cert
+    SASL_SECPROPS minssf=0,maxssf=0
+
+See L<ldap.conf(5)> for the available options.
+
+Only GSS-API binds are supported by B<kadmin-backend> at this time.
+
+The above SASL_SECPROPS settings are required if you want to set passwords
+via the LDAP interface.  Active Directory requires TLS be used when
+setting passwords over LDAP and does not allow a SASL security layer to be
+negotiated when TLS is in use.  The above settings configure TLS and
+disable negotiation of a SASL security layer.
+
+Even this doesn't work with Windows Server 2008, which rejects all GSS-API
+binds over TLS.  For that version, change the URI to C<ldap> instead of
+C<ldaps> and remove the TLS and SASL_SECPROPS configuration.  This will do
+straight GSS-API binds with a SASL security layer.  Then, set ad_setpass
+as mentioned below so that password changes are done via the Kerberos set
+password protocol.
+
+=item ad_group
+
+Contains the DN of an Active Directory authorization group to which all
+created principals of the given instance should be added automatically on
+creation.  The addition will be done by modifying the group identified by
+that DN to add a new C<member> attribute equal to the DN of the newly
+created account.
+
+=item ad_keytab
+
+Points to a keytab used to obtain credentials for Active Directory
+modifications.  This keytab will be used with B<k5start> to obtain
+Kerberos credentials when running LDAP commands.  If ad_config is set,
+this key is required.
+
+=item ad_ldif
+
+Points to a Text::Template template file containing the complete LDIF
+required to create a new entry in Active Directory for an account with the
+given instance.  See L<Text::Template> for the details of the format, but
+mostly all you'll need to do is include strings like C<{$principal}> into
+the file where you want to substitute in the username.  The available
+variables are:
+
+    principal   The base username (without any instance)
+    instance    The instance of the account
+    password    The base64-encoded password for the account
+    control     The userAccountControl setting
+
+For example, this file may contain:
+
+    dn: cn={$principal}/{$instance},ou=Accounts,dc=example,dc=org
+    objectClass: user
+    cn: {$user}/{$instance}
+    sAMAccountName: {$principal}/{$instance}
+    userAccountControl: {$control}
+    unicodePwd:: {$password}
+    userPrincipalName: {$principal}/{$instance}@EXAMPLE.ORG
+
+For account creation, the entire template is used.  For account deletion
+and modifications, only the line starting with C<dn:> (and any LDIF
+continuation lines) is extracted and the contents, after template
+resolution, are used as the DN to delete from Active Directory.
+
+If you don't have TLS set up so that you can set unicodePwd over the LDAP
+interface, set ad_setpass as described below.
+
+=item ad_realm
+
+The realm of the Active Directory environment.  If this is set,
+B<ksetpass> calls are qualified with this realm and B<k5start> is told to
+authenticate to this realm when making LDAP calls.  If the keytab used for
+Active Directory is a keytab in your local non-AD Kerberos realm and
+you're using cross-realm authentication with Active Directory, don't set
+this key.
+
+=item ad_setpass
+
+If this is set, accounts are created in Active Directory disabled and
+without a password, the password is set with B<ksetpass>, and then the
+account is enabled.  This is necessary if your Active Directory doesn't
+permit GSS-API authentication over TLS.
+
+=item afs_admin
+
+Principal to use for AFS kaserver operations.  If this key is not set, no
+propagation of operations to an AFS kaserver environment is attempted.
+
+=item afs_fake
+
+Controls how the Kerberos v4 examine output is constructed.  If this key
+is set to a true value, B<kadmin-backend> will create fake Kerberos v4
+kadmin examine output based on the Kerberos v5 output, even if AFS
+kaserver integration is otherwise configured.  This is probably only of
+interest at Stanford University to support an old API.
+
+=item afs_srvtab
+
+Srvtab to use for AFS kaserver authentication.
+
+=item acl
+
+The value is the ACL file listing the principals that can manage instances
+of this type.  This option must be set and should contain a simple list of
+fully-qualified principals, one per line, or lines in the form:
+
+    include /path/to/another/file
+
+which are processed recursively.
+
+=item allowed
+
+The value is a regular expression that overrides the default regular
+expression used to check principals (the non-instance portion).  Be sure
+that this regular expression doesn't allow an instance (instances are
+handled separately) or a realm, and be sure it rejects any characters that
+might confuse the shell or B<kadmin> (shell metacharacters, whitespace,
+and so forth).
+
+=item checking
+
+Set to a true value if passwords for this instance should be subject to
+password strength checking, false otherwise.
+
+=item k5_admin
+
+Principal to use for authentication of Kerberos v5 B<kadmin> operations.
+If this key is not set, no propagation of operations to an MIT Kerberos v5
+KDC is done.  If this key is set, Kerberos v5 operations are preferred
+over Active Directory operations and B<kadmin-backend> assumes that
+account status changes and password changes will be propagated from
+Kerberos v5 to Active Directory by means other than this program.
+
+=item k5_host
+
+If set, pass this argument to Kerberos v5 B<kadmin> via the B<-s> flag to
+tell it to use a different admin server.  Mostly useful for testing to
+point B<kadmin-backend> at a different kadmin server.
+
+=item k5_keytab
+
+Keytab to use for authentication of Kerberos v5 B<kadmin> operations.
+
+=item reset
+
+Set to a true value if B<kadmin-backend> should support resetting
+passwords for this instance (via the C<instance reset> function), false
+otherwise.
+
+=back
+
+=item $K5_KADMIN
+
+Path to the regular MIT Kerberos v5 B<kadmin> command-line client.  Most
+operations are done by running this client interactively under Expect.
+
+=item $K5_KPASSWD
+
+Path to the Kerberos v5 B<kpasswd> command-line client, which is used to
+implement the C<change_passwd> function.
+
+=item $K5START
+
+Path to B<k5start>, used to obtain credentials when propagating accounts
+into Active Directory.  By default, B<kadmin-backend> searches the PATH for
+the first B<k5start> binary found.
+
+=item $KASETKEY
+
+Path to B<kasetkey>, used to make changes to an AFS kaserver.  By default,
+B<kadmin-backend> searches the PATH for the first B<kasetkey> binary
+found.
+
+=item $KSETPASS
+
+Path to B<ksetpass>, used to set passwords in Active Directory.  By
+default, B<kadmin-backend> searches the PATH for the first B<ksetpass>
+binary found.
+
+=item $LDAPADD
+
+Path to B<ldapadd>, used to create new accounts in Active Directory.  By
+default, B<kadmin-backend> searches the PATH for the first B<ldapadd> binary
+found.
+
+=item $LDAPDELETE
+
+Path to B<ldapdelete>, used to obtain credentials when deleting accounts
+from Active Directory.  By default, B<kadmin-backend> searches the PATH for
+the first B<ldapdelete> binary found.
+
+=item $LDAPMODIFY
+
+Path to B<ldapmodify>, used to add principals to Active Directory
+authorization groups if the ad_group configuration option is set and to
+enable and disable principals.  By default, B<kadmin-backend> searches the
+PATH for the first B<ldapmodify> binary found.
+
+=item $LDAPSEARCH
+
+Path to B<ldapsearch>, used to check whether an account already exists in
+Active Directory.  By default, B<kadmin-backend> searches the PATH
+for the first B<ldapsearch> binary found.
+
+=item %RESERVED
+
+A hash of reserved principal names (without instances).  The keys are the
+principals; the value should be any true value.  If a principal is present
+in this hash, B<kadmin-backend> will refuse to perform any operation on
+that principal or any of its instances.  You can either reset this hash
+completely in the configuration file (if you do, be careful of principals
+like C<kadmin> and C<krbtgt>) or add additional principals to it.
+
+=item $RESET_ACL
+
+Path to the ACL file controlling who can change passwords for other users.
+B<kadmin-backend> checks the principal for which a password is being
+changed against this file and refuses password changes if the target
+principal is listed in this file.  This ensures that people who can change
+others' passwords cannot themselves have their password changed through
+that route, preventing privilege escalation.
+
+=item $STRENGTH
+
+The Kerberos principal used for strength checking.  When checking the
+strength of a password (the C<check_passwd> function), B<kadmin-backend>
+attempts to change the password of this principal.  This principal should
+therefore be set DISALLOW_ALL_TIX and not be used on any ACLs, since any
+user with access to the C<check_passwd> function can change its password to
+anything they choose.
+
+=back
+
+For the defaults, see the beginning of the B<kadmin-backend> script.
+
+=head1 ENVIRONMENT
+
+=over 4
+
+=item REMOTE_USER
+
+This environment variable must be set to the Kerberos principal attempting
+an operation when managing instances.  The contents of this variable will
+be checked against the ACL file for that instance.  This variable is
+normally set by the B<remctld> server.
+
+=back
+
+=head1 SEE ALSO
+
+k5start(1), kasetkey(8), ksetpass(1), ldap.conf(5), ldapadd(1),
+ldapdelete(1), ldapmodify(1), ldapsearch(1)
+
+This program is part of kadmin-remctl.  The current version is available
+from L<http://www.eyrie.org/~eagle/software/kadmin-remctl/>.
+
+=head1 AUTHOR
+
+Russ Allbery <rra@stanford.edu>
+
+=cut
