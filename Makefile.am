@@ -20,7 +20,7 @@ passwd_change_LDFLAGS = $(REMCTL_LDFLAGS) $(AM_LDFLAGS)
 passwd_change_LDADD = $(REMCTL_LIBS) $(KRB5_LIBS)
 ksetpass_LDADD = $(KRB5_LIBS)
 
-dist_sbin_SCRIPTS = kadmin-backend
+dist_sbin_SCRIPTS = kadmin-backend kadmin-backend-heimdal
 
 dist_man_MANS = passwd_change.1 kadmin-backend.8 ksetpass.1
 
