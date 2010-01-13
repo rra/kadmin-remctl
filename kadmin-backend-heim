@@ -26,10 +26,12 @@
 ##############################################################################
 
 use strict;
+no strict 'refs';
 
 use Heimdal::Kadm5 qw (KRB5_KDB_REQUIRES_PRE_AUTH KADM5_POLICY_NORMAL_MASK
                        KRB5_KDB_DISALLOW_ALL_TIX KADM5_POLICY_CLR);
 use POSIX;
+use Time::Seconds;
 use Expect ();
 
 # Disable sending of kadmin's output to our standard output.
@@ -204,59 +206,16 @@ sub kadmin_handle {
     my ($instance) = @_;
     return $CONFIG{$instance}{handle} if exists $CONFIG{$instance}{handle};
 
+    # TODO - Realm is needed for testing ATM, but should not be normally
+    #        required.
     my $kadmin =  Heimdal::Kadm5::Client->new(
-	Principal   => "jonrober/admin",
 	Realm       => 'heimdal.stanford.edu',
-	#Principal   => $CONFIG{instance}{k5_admin},
-	#Keytab      => $CONFIG{instance}{k5_keytab},
+	Principal   => $CONFIG{$instance}{k5_admin},
+	Keytab      => $CONFIG{$instance}{k5_keytab},
 	RaiseErrors => 1,
 	);
     $CONFIG{$instance}{handle} = $kadmin;
     return $kadmin;
-}
-
-# Spawn a conversation with k5admin and return an Expect object.  Takes the
-# instance to get the right configuration.
-sub spawn_k5admin {
-    my ($instance) = @_;
-    my @args = ('-p', $CONFIG{$instance}{k5_admin}, '-k',
-                '-t', $CONFIG{$instance}{k5_keytab});
-    if ($CONFIG{$instance}{k5_host}) {
-        push (@args, '-s', $CONFIG{$instance}{k5_host});
-    }
-    my $k5admin = Expect->spawn ($K5_KADMIN, @args);
-    unless ($k5admin) {
-        die "error: cannot run $K5_KADMIN\n";
-    }
-    return $k5admin;
-}
-
-# Run a k5admin command and capture the output.  Return a list consisting of
-# the exit status and the output, or in a scalar context, just the exit
-# status.
-sub run_k5admin {
-    my ($instance, $command) = @_;
-    my @args = ('-p', $CONFIG{$instance}{k5_admin}, '-k',
-                '-t', $CONFIG{$instance}{k5_keytab}, '-q', $command);
-    if ($CONFIG{$instance}{k5_host}) {
-        push (@args, '-s', $CONFIG{$instance}{k5_host});
-    }
-    my $pid = open (K5ADMIN, '-|');
-    if (not defined $pid) {
-        die "error: cannot fork: $!\n";
-    } elsif ($pid == 0) {
-        open (STDERR, '>&STDOUT') or die "error: cannot dup stdout: $!\n";
-        exec ($K5_KADMIN, @args)
-            or die "error: cannot run $K5_KADMIN: $!\n";
-    }
-    local $_;
-    my @output;
-    while (<K5ADMIN>) {
-        push (@output, $_) unless /Authenticating as principal/;
-    }
-    close K5ADMIN;
-    my $status = ($? >> 8);
-    return wantarray ? ($status, join ('', @output)) : $status;
 }
 
 # Check whether a principal already exists in Kerberos.  Returns false if it
@@ -910,6 +869,77 @@ sub enable_principal {
 }
 
 ##############################################################################
+# Principal data formatting
+##############################################################################
+
+# Convert epoch seconds into a date compatible with Kerberos output.
+sub _sec2date { $_[0] ? strftime "%c", gmtime($_[0]): '[never]'; }
+
+# Convert epoch seconds into a date compatible with Kerberos output.  This
+# version is specifically for the password expiration date, which gives a
+# different output for unset values.
+sub _sec2pwddate { $_[0] ? strftime "%c", gmtime($_[0]): '[none]'; }
+
+# Convert seconds into a days and hours format for ticket lifetime and
+# maximum lifetime.
+sub _sec2days {
+    my $seconds = shift;
+    my $val = Time::Seconds->new($seconds);
+    my $str = sprintf ("%d days %02d:%02d:%02d", $val->days, $val->hours % 24,
+	$val->minutes % 60, $val->seconds % 60);
+    $str =~ s#days#day# if $val->days == 1;
+    return $str;
+}
+
+# Given an attribute bitmask, convert it into a string of attribute text.
+sub _attr2str {
+    my $mask = shift;
+    my @attrs = ();
+    my @possible = ('KRB5_KDB_DISALLOW_ALL_TIX',
+                    'KRB5_KDB_DISALLOW_DUP_SKEY',
+                    'KRB5_KDB_DISALLOW_FORWARDABLE',
+                    'KRB5_KDB_DISALLOW_POSTDATED',
+                    'KRB5_KDB_DISALLOW_PROXIABLE',
+                    'KRB5_KDB_DISALLOW_RENEWABLE',
+                    'KRB5_KDB_DISALLOW_SVR',
+                    'KRB5_KDB_DISALLOW_TGT_BASED',
+                    'KRB5_KDB_NEW_PRINC',
+                    'KRB5_KDB_REQUIRES_HW_AUTH',
+                    'KRB5_KDB_REQUIRES_PRE_AUTH',
+                    'KRB5_KDB_REQUIRES_PWCHANGE',
+                    'KRB5_KDB_SUPPORT_DESMD5',
+	);
+
+    foreach my $test (@possible) {
+	my $short;
+	($short = $test) =~ s#^KRB5_KDB_##;
+        push (@attrs, $short) if $mask & &{"Heimdal::Kadm5::$test"}();
+    }
+    return join (' ', sort @attrs);
+}
+
+# Given a short text for a keytype, expand it into a full description as 
+# would come from MIT kerberos output.
+sub _keytype2text {
+    my ($keytype) = @_;
+    my %typemaps = ('aes256-cts-hmac-sha1-96' 
+		        => 'AES-256 CTS mode with 96-bit SHA-1 HMAC',
+		    'aes128-cts-hmac-sha1-96' 
+		        => 'AES-128 CTS mode with 96-bit SHA-1 HMAC',
+		    'arcfour-hmac-md5' => 'ArcFour with HMAC/md5',
+		    'des-cbc-crc'      => 'DES cbc mode with CRC-32',
+		    'des-cbc-md4'      => 'DES cbc mode with RSA-MD4',
+		    'des3-cbc-sha1'    => 'Triple DES cbc mode with HMAC/sha1',
+		    'des-cbc-md5'      => 'DES cbc mode with RSA-MD5',
+		    'des-hmac-sha1'    => 'DES with HMAC/sha1',
+		    'arcfour-hmac-exp' => 'Exportable RC4 with HMAC/MD5',
+
+	);
+    return $typemaps{$keytype} if exists $typemaps{$keytype};
+    return $keytype;
+}
+
+##############################################################################
 # Examining principals
 ##############################################################################
 
@@ -977,14 +1007,45 @@ sub examine_principal {
         print $output, '-' x 40, "\n";
     }
 
-    # Replicate kadmin getprinc.  Heimdal::Kadm5 only does a dump, not a 
-    # formatted view.
+    # Replicate kadmin getprinc.  Heimdal::Kadm5 has a command for this, but
+    # does so in a heimdal kadmin format.  For downstream apps, we need to
+    # replicate the MIT output.
     my $kadmin = kadmin_handle ($instance);
     my $princdata = $kadmin->getPrincipal ($principal);
     my $output = '';
-    open (FH, '>', \$output) or die "error opening handle for printing: $!\n";
-    $princdata->dump (\*FH);
-    close FH;
+    $output .= sprintf ("%s: %s\n", 'Principal', $princdata->getPrincipal);
+    $output .= sprintf ("%s: %s\n", 'Expiration date',
+			_sec2date($princdata->getPrincExpireTime));
+    $output .= sprintf ("%s: %s\n", 'Last password change',
+			_sec2date($princdata->getLastPwdChange));
+    $output .= sprintf ("%s: %s\n", 'Password expiration date',
+			_sec2pwddate($princdata->getPwExpiration));
+    $output .= sprintf ("%s: %s\n", 'Maximum ticket life',
+			_sec2days($princdata->getMaxLife));
+    $output .= sprintf ("%s: %s\n", 'Maximum renewable life',
+			_sec2days($princdata->getMaxRenewableLife));
+    $output .= sprintf ("%s: %s (%s)\n", 'Last modified', 
+			_sec2date($princdata->getModDate), 
+			$princdata->getModName);
+    $output .= sprintf ("%s: %s\n", 'Last successful authentication',
+			_sec2date($princdata->getLastSuccess));
+    $output .= sprintf ("%s: %s\n", 'Last failed authentication',
+			_sec2date($princdata->getLastFailed));
+    $output .= sprintf ("%s: %d\n", 'Failed password attempts', 
+			$princdata->getFailAuthCounts);
+    $output .= sprintf ("%s: %d\n", 'Number of keys', 
+			scalar @{$princdata->getKeytypes});
+    foreach my $kt (@{$princdata->getKeytypes}) {
+	$output .= sprintf ("%s: vno %d, %s, %s\n", 'Key', 
+			    $princdata->getKvno, _keytype2text($kt->[0]), 
+			    $kt->[1]);
+    }
+    $output .= sprintf ("%s: %s\n", 'Attributes', 
+			_attr2str($princdata->getAttributes));
+
+    my $policy = $princdata->getPolicy;
+    $policy = 'standard' unless $policy;
+    $output .= sprintf ("%s: %s\n", 'Policy', $policy);
 
     if ($CONFIG{$instance}{afs_fake}) {
         my $k4output;
