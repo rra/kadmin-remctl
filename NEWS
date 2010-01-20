@@ -1,5 +1,14 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 2.5 (unreleased)
+
+    Add kadmin-backend-heim, which duplicates the kadmin-backend
+    functionality for Heimdal.  The examine function of this backend
+    duplicates the output of the MIT getprinc function so that the output
+    is compatible with the output of kadmin-backend.
+
+    Allow - in principal names for the examine function.
+
 kadmin-remctl 2.4 (2009-10-05)
 
     When enabling or disabling accounts in Active Directory via LDAP, send
