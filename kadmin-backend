@@ -68,6 +68,7 @@ our $LDAPSEARCH = 'ldapsearch';
 #     acl        => File listing principals that can manage this instance
 #     allowed    => Regex matching all permitted principal names (w/o instance)
 #     checking   => True if we should enable password strength checking
+#     locked     => Program to check to see if we can enable an account
 #     k5_admin   => Principal for Kerberos v5 kadmin authentication
 #     k5_host    => Admin server for Kerberos v5 kadmin operations
 #     k5_keytab  => Keytab for Kerberos v5 kadmin authentication
@@ -352,6 +353,14 @@ sub kadmin_enable {
     check_principal ($principal, $instance);
     kadmin_config ($instance) or return;
     $principal = "$principal/$instance" if $instance;
+    if (exists $CONFIG{$instance}{locked} && @{$CONFIG{$instance}{locked}}) {
+        my $retval = system (@{$CONFIG{$instance}{locked}}, $principal);
+        if ($retval == 0) {
+            warn "error: $principal is marked locked by external check\n";
+            print "retstr: $principal is marked locked by external check\n";
+            exit 1;
+        }
+    }
     my ($status, $output)
         = run_k5admin ($instance, "modprinc +allow_tix $principal");
     if ($status != 0 || $output =~ /^modify_principal: /) {
@@ -1484,6 +1493,13 @@ and so forth).
 
 Set to a true value if passwords for this instance should be subject to
 password strength checking, false otherwise.
+
+=item locked
+
+Set to an array containing a program (and its required arguments) to use to 
+check if an instance is locked.  'Locked' means that the instance cannot be 
+enabled again using this interface for some policy reason.  If the array
+is undefined or empty, there is no checking for locked status.
 
 =item k5_admin
 
