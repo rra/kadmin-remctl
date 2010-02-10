@@ -14,22 +14,18 @@
  * Written by Russ Allbery <rra@stanford.edu>
  * Based on code developed by Derrick Brashear and Ken Hornstein of Sine
  * Nomine Associates, on behalf of Stanford University.
- * Copyright 2006, 2007, 2008 Board of Trustees, Leland Stanford Jr. University
+ * Copyright 2006, 2007, 2008, 2010
+ *     Board of Trustees, Leland Stanford Jr. University
  *
  * See LICENSE for licensing terms.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <config.h>
+#include <portable/krb5.h>
+#include <portable/system.h>
 
-#ifdef HAVE_ET_COM_ERR_H
-# include <et/com_err.h>
-#else
-# include <com_err.h>
-#endif
-#include <krb5.h>
+#include <util/messages-krb5.h>
+#include <util/messages.h>
 
 int
 main(int argc, char *argv[])
@@ -43,48 +39,34 @@ main(int argc, char *argv[])
     krb5_error_code ret;
     ssize_t size;
 
-    if (argc != 2) {
-        fprintf(stderr, "no principal specified\n");
-        exit(1);
-    }
+    message_program_name = "ksetpass";
+    if (argc != 2)
+        die("no principal specified");
     ret = krb5_init_context(&ctx);
-    if (ret != 0) {
-        com_err("ksetpass", ret, "while initializing Kerberos");
-        exit(1);
-    }
+    if (ret != 0)
+        die_krb5(ctx, ret, "cannot initialize Kerberos");
     ret = krb5_cc_default(ctx, &ccache);
-    if (ret != 0) {
-        com_err("ksetpass", ret, "while reading ticket cache");
-        exit(1);
-    }
+    if (ret != 0)
+        die_krb5(ctx, ret, "cannot open default ticket cache");
     ret = krb5_parse_name(ctx, argv[1], &princ);
-    if (ret != 0) {
-        com_err("ksetpass", ret, "while parsing principal");
-        exit(1);
-    }
+    if (ret != 0)
+        die_krb5(ctx, ret, "invalid principal name %s", argv[1]);
     size = read(0, password, sizeof(password));
-    if (size == 0) {
-        fprintf(stderr, "no password given on standard input\n");
-        exit(1);
-    }
-    if (size >= (ssize_t) sizeof(password)) {
-        fprintf(stderr, "password too long\n");
-        exit(1);
-    }
+    if (size < 0)
+        sysdie("cannot read password from standard input");
+    else if (size == 0)
+        die("no password given on standard input");
+    if (size >= (ssize_t) sizeof(password))
+        die("password too long");
     password[size] = '\0';
     ret = krb5_set_password_using_ccache(ctx, ccache, password, princ,
               &result_code, &result_code_string, &result_string);
-    if (ret != 0) {
-        com_err("ksetpass", ret, "while changing password");
-        exit(1);
-    }
-    if (result_code != 0) {
-        fprintf(stderr, "password change failed: (%d) %.*s%s%.*s\n",
-                result_code, result_code_string.length,
-                result_code_string.data,
-                result_string.length ? ": " : "",
-                result_string.length, result_string.data);
-        exit(1);
-    }
+    if (ret != 0)
+        die_krb5(ctx, ret, "cannot change password for %s", argv[1]);
+    if (result_code != 0)
+        die("password change failed: (%d) %.*s%s%.*s", result_code,
+            result_code_string.length, result_code_string.data,
+            result_string.length ? ": " : "",
+            result_string.length, result_string.data);
     exit(0);
 }

@@ -14,6 +14,11 @@ kadmin-remctl 2.5 (unreleased)
     called to determine if the instance is locked for some external 
     policy reason.  If so, the enable command will fail for this instance.
 
+    Significantly improve the error reporting in ksetpass and
+    passwd_change by using modern Kerberos error functions where
+    available, and avoid Kerberos API calls that are deprecated on
+    Heimdal.
+
 kadmin-remctl 2.4 (2009-10-05)
 
     When enabling or disabling accounts in Active Directory via LDAP, send

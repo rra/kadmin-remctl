@@ -8,24 +8,24 @@
  * the command line).
  *
  * Written by Russ Allbery <rra@stanford.edu>
- * Copyright 1997, 2007 Board of Trustees, Leland Stanford Jr. University
+ * Copyright 1997, 2007, 2010
+ *     Board of Trustees, Leland Stanford Jr. University
  *
  * See LICENSE for licensing terms.
  */
 
-#include <errno.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <config.h>
+#include <portable/krb5.h>
+#include <portable/system.h>
 
-#ifdef HAVE_ET_COM_ERR_H
-# include <et/com_err.h>
-#else
-# include <com_err.h>
-#endif
-#include <krb5.h>
+#include <errno.h>
 #include <remctl.h>
+#include <signal.h>
+
+#include <util/concat.h>
+#include <util/messages-krb5.h>
+#include <util/messages.h>
+#include <util/xmalloc.h>
 
 /* The full path to the site-wide password file, for real name mapping. */
 #ifndef PASSWD_FILE
@@ -47,9 +47,6 @@
 
 /* The memory cache used for the password change authentication. */
 #define CACHE_NAME "MEMORY:passwd_change"
-
-/* The name of this program (will be taken from argv[0]). */
-static char *program;
 
 
 /*
@@ -85,16 +82,21 @@ config_number(krb5_context ctx, const char *opt, int defval, int *result)
 /*
  * Open a connection to kadmind and authenticate to the server.  This creates
  * a new ticket file and obtains the service/password-change ticket which will
- * then be used to change the user's password.
+ * then be used to change the user's password.  Returns 0 on success and -1 on
+ * a failure it's worth retrying.  For some failures, such as memory
+ * allocation problems, just dies.
  */
 static int
 login(krb5_context ctx, char *service)
 {
     krb5_error_code status;
-    krb5_ccache ccache;
-    krb5_principal princ;
+    krb5_ccache ccache = NULL;
+    krb5_principal princ = NULL;
     krb5_creds creds;
-    krb5_get_init_creds_opt opts;
+    bool creds_valid = false;
+    krb5_get_init_creds_opt *opts;
+
+    memset(&creds, 0, sizeof(creds));
 
     /*
      * First of all, we have to figure out what the admin principal is.  We do
@@ -102,54 +104,55 @@ login(krb5_context ctx, char *service)
      */
     status = krb5_cc_default(ctx, &ccache);
     if (status != 0) {
-        com_err(program, status, "while reading ticket cache");
-        return -1;
+        warn_krb5(ctx, status, "cannot open default ticket cache");
+        goto fail;
     }
     status = krb5_cc_get_principal(ctx, ccache, &princ);
     if (status != 0) {
-        com_err(program, status, "while getting principal name");
-        krb5_cc_close(ctx, ccache);
-        return -1;
+        warn_krb5(ctx, status, "cannot get principal name from cache");
+        goto fail;
     }
     krb5_cc_close(ctx, ccache);
 
     /* Now, we have the user's principal in principal.  Authenticate. */
-    krb5_get_init_creds_opt_init(&opts);
-    memset(&creds, 0, sizeof(creds));
+    status = krb5_get_init_creds_opt_alloc(ctx, &opts);
+    if (status != 0)
+        die_krb5(ctx, status, "cannot allocate credential options");
+    krb5_get_init_creds_opt_set_default_flags(ctx, "passwd_change",
+                                              princ->realm, opts);
     status = krb5_get_init_creds_password(ctx, &creds, princ, NULL,
-                 krb5_prompter_posix, NULL, 0, service, &opts);
+                 krb5_prompter_posix, NULL, 0, service, opts);
     if (status != 0) {
-        com_err(program, status, "while authenticating");
-        krb5_free_principal(ctx, princ);
-        return -1;
+        warn_krb5(ctx, status, "authentication failed");
+        goto fail;
     }
+    creds_valid = true;
 
     /* Put the new credentials into a memory cache. */
     status = krb5_cc_resolve(ctx, CACHE_NAME, &ccache);
-    if (status != 0) {
-        com_err(program, status, "while resolving memory cache");
-        krb5_free_principal(ctx, princ);
-        return -1;
-    }
+    if (status != 0)
+        die_krb5(ctx, status, "cannot create memory cache");
     status = krb5_cc_initialize(ctx, ccache, princ);
-    if (status != 0) {
-        com_err(program, status, "while initializing memory cache");
-        return -1;
-    }
+    if (status != 0)
+        die_krb5(ctx, status, "cannot initialize memory cache");
     krb5_free_principal(ctx, princ);
     status = krb5_cc_store_cred(ctx, ccache, &creds);
-    if (status != 0) {
-        com_err(program, status, "while storing credentials");
-        krb5_cc_destroy(ctx, ccache);
-        return -1;
-    }
+    if (status != 0)
+        die_krb5(ctx, status, "cannot store credentials");
     krb5_cc_close(ctx, ccache);
-    if (putenv((char *) "KRB5CCNAME=" CACHE_NAME) != 0) {
-        fprintf(stderr, "%s: putenv of KRB5CCNAME failed: %s\n", program,
-                strerror(errno));
-        return -1;
-    }
+    krb5_free_cred_contents(ctx, &creds);
+    if (putenv((char *) "KRB5CCNAME=" CACHE_NAME) != 0)
+        sysdie("putenv of KRB5CCNAME failed");
     return 0;
+
+fail:
+    if (ccache != NULL)
+        krb5_cc_close(ctx, ccache);
+    if (princ != NULL)
+        krb5_free_principal(ctx, princ);
+    if (creds_valid)
+        krb5_free_cred_contents(ctx, &creds);
+    return -1;
 }
 
 
@@ -158,64 +161,47 @@ login(krb5_context ctx, char *service)
  * on success, -1 on a retriable failure, and -2 on a permanent failure.
  */
 static int
-get_password(char **password)
+get_password(krb5_context ctx, char **password)
 {
     krb5_prompt prompts[2];
-    krb5_context ctx;
     krb5_error_code status;
+    int ret = -2;
 
     /* Set up the prompt structure. */
     prompts[0].prompt = (char *) "New password";
     prompts[0].hidden = 1;
-    prompts[0].reply = calloc(1, sizeof(*prompts[0].reply));
-    if (prompts[0].reply == NULL) {
-        fprintf(stderr, "%s: cannot allocate memory: %s\n", program,
-                strerror(errno));
-        return -2;
-    }
-    prompts[0].reply->data = malloc(1024);
-    if (prompts[0].reply->data == NULL) {
-        fprintf(stderr, "%s: cannot allocate memory: %s\n", program,
-                strerror(errno));
-        return -2;
-    }
-    prompts[0].reply->length = 1024;
+    prompts[0].reply = xcalloc(1, sizeof(*prompts[0].reply));
+    prompts[0].reply->data = xmalloc(BUFSIZ);
+    prompts[0].reply->length = BUFSIZ;
     prompts[1].prompt = (char *) "Re-enter new password";
     prompts[1].hidden = 1;
-    prompts[1].reply = calloc(1, sizeof(*prompts[0].reply));
-    if (prompts[1].reply == NULL) {
-        fprintf(stderr, "%s: cannot allocate memory: %s\n", program,
-                strerror(errno));
-        return -2;
-    }
-    prompts[1].reply->data = malloc(1024);
-    if (prompts[0].reply->data == NULL) {
-        fprintf(stderr, "%s: cannot allocate memory: %s\n", program,
-                strerror(errno));
-        return -2;
-    }
-    prompts[1].reply->length = 1024;
+    prompts[1].reply = xcalloc(1, sizeof(*prompts[0].reply));
+    prompts[1].reply->data = xmalloc(BUFSIZ);
+    prompts[1].reply->length = BUFSIZ;
 
     /* Finally, we can do the actual prompt. */
-    status = krb5_init_context(&ctx);
-    if (status != 0) {
-        com_err(program, status, "while initializing Kerberos");
-        return -2;
-    }
     status = krb5_prompter_posix(ctx, NULL, NULL, NULL, 2, prompts);
     if (status != 0) {
-        com_err(program, status, "while prompting for a password");
-        return -2;
+        warn_krb5(ctx, status, "cannot prompt for a password");
+        goto fail;
     }
     if (strcmp(prompts[0].reply->data, prompts[1].reply->data) != 0) {
-        printf("The passwords don't match\n");
-        return -1;
+        warn("passwords don't match");
+        ret = -1;
+        goto fail;
     }
     *password = prompts[0].reply->data;
     free(prompts[0].reply);
     free(prompts[1].reply->data);
     free(prompts[1].reply);
     return 0;
+
+fail:
+    free(prompts[0].reply->data);
+    free(prompts[0].reply);
+    free(prompts[1].reply->data);
+    free(prompts[1].reply);
+    return ret;
 }
 
 
@@ -224,8 +210,8 @@ get_password(char **password)
  * then call remctl to do the real work.
  */
 static int
-reset_password(char *principal, const char *service, const char *host,
-               unsigned short port)
+reset_password(krb5_context ctx, char *principal, const char *service,
+               const char *host, unsigned short port)
 {
     int status;
     char *password;
@@ -234,7 +220,7 @@ reset_password(char *principal, const char *service, const char *host,
 
     /* Get the new password. */
     do {
-        status = get_password(&password);
+        status = get_password(ctx, &password);
         printf("\n");
     } while (status == -1);
     if (status == -2)
@@ -248,7 +234,7 @@ reset_password(char *principal, const char *service, const char *host,
     command[4] = NULL;
     result = remctl(host, port, service, command);
     if (result->error != NULL) {
-        fprintf(stderr, "%s\n", result->error);
+        warn("%s", result->error);
         remctl_result_free(result);
         return -2;
     } else {
@@ -283,20 +269,12 @@ find_name(char *username, const char *passwd_file)
     int count;
 
     /* Build our search string, which is the username followed by a :. */
-    search = (char *) malloc(strlen(username) + 2);
-    if (search == NULL) {
-        fprintf(stderr, "%s: cannot allocate memory: %s\n", program,
-                strerror(errno));
-        return NULL;
-    }
-    strcpy(search, username);
-    strcat(search, ":");
+    search = concat(username, ":", (char *) 0);
 
     /* Open the password file. */
     passwd = fopen(passwd_file, "r");
     if (passwd == NULL) {
-        fprintf(stderr, "%s: unable to open site password file: %s\n",
-                program, strerror(errno));
+        syswarn("unable to open site password file");
         free(search);
         return NULL;
     }
@@ -317,14 +295,7 @@ find_name(char *username, const char *passwd_file)
             for (end = start + 1; *end && *end != ':'; end++)
                 ;
             *end = '\0';
-            name = (char *) malloc(strlen(start) + 1);
-            if (name == NULL) {
-                fprintf(stderr, "%s: cannot allocate memory: %s\n", program,
-                        strerror(errno));
-                free(search);
-                return NULL;
-            }
-            strcpy(name, start);
+            name = xstrdup(start);
         }
     } while (name == NULL);
     free(search);
@@ -342,21 +313,21 @@ main(int argc, char **argv)
     char *name;
 
     /*
-     * Set the name of the program, used by com_err(), stripping off the path
-     * information first.
+     * Set the name of the program, used for error reporting, stripping off
+     * the path information first.
      */
-    program = strrchr (argv[0], '/');
-    if (program != NULL)
-        program++;
+    message_program_name = strrchr (argv[0], '/');
+    if (message_program_name != NULL)
+        message_program_name++;
     else
-        program = argv[0];
+        message_program_name = argv[0];
 
     /*
      * Check for a -h or --help flag and spit out a simple usage if one is
      * given, just in case someone tries that.
      */
     if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
-        printf("Usage: %s [<username>]\n\n", program);
+        printf("Usage: %s [<username>]\n\n", message_program_name);
         printf("Usable by authorized users only, changes the password for "
                "<username>.  The\nusername will be prompted for if not "
                "supplied on the command line.\n");
@@ -365,10 +336,8 @@ main(int argc, char **argv)
 
     /* Obtain a Kerberos context so that we can look up configuration. */
     status = krb5_init_context(&ctx);
-    if (status != 0) {
-        com_err(program, status, "while initializing Kerberos");
-        return -1;
-    }
+    if (status != 0)
+        die_krb5(ctx, status, "cannot initialize Kerberos");
     config_string(ctx, "passwd_file", PASSWD_FILE, &passwd);
     config_string(ctx, "service_principal", PRINCIPAL, &service);
     config_string(ctx, "server", HOST, &host);
@@ -388,11 +357,8 @@ main(int argc, char **argv)
         strncpy(principal, argv[1], sizeof(principal) - 1);
     else {
         printf("Enter username whose password you wish to change: ");
-        if (fgets(principal, sizeof(principal), stdin) == NULL) {
-            fprintf(stderr, "%s: error reading username: %s\n", program,
-                    strerror(errno));
-            exit(1);
-        }
+        if (fgets(principal, sizeof(principal), stdin) == NULL)
+            sysdie("error reading username");
         principal[strlen(principal) - 1] = '\0';
     }
 
@@ -417,7 +383,7 @@ main(int argc, char **argv)
 
     /* Change the password.  Loop up to five times in the case of an error. */
     for (tries = 0; tries < 5; tries++) {
-        status = reset_password(principal, service, host, port);
+        status = reset_password(ctx, principal, service, host, port);
         if (!status || status == -2)
             break;
         else

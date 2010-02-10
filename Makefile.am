@@ -20,9 +20,9 @@ portable_libportable_a_SOURCES = portable/dummy.c portable/krb5-extra.c \
         portable/system.h
 portable_libportable_a_CPPFLAGS = $(KRB5_CPPFLAGS)
 portable_libportable_a_LIBADD = $(LIBOBJS)
-util_libutil_a_SOURCES = util/macros.h util/messages-krb5.c		    \
-        util/messages-krb5.h util/messages.c util/messages.h util/xmalloc.c \
-        util/xmalloc.h
+util_libutil_a_SOURCES = util/concat.c util/concat.h util/macros.h	\
+        util/messages-krb5.c util/messages-krb5.h util/messages.c	\
+        util/messages.h util/xmalloc.c util/xmalloc.h
 util_libutil_a_CPPFLAGS = $(KRB5_CPPFLAGS)
 
 bin_PROGRAMS = passwd_change ksetpass
