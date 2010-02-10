@@ -5,7 +5,9 @@ kadmin-remctl 2.5 (unreleased)
     Add kadmin-backend-heim, which duplicates the kadmin-backend
     functionality for Heimdal.  The examine function of this backend
     duplicates the output of the MIT getprinc function so that the output
-    is compatible with the output of kadmin-backend.
+    is compatible with the output of kadmin-backend.  This separate script
+    is a temporary measure until both scripts can be refactored as Perl
+    modules and use a better method to avoid code duplication.
 
     Allow - in principal names for the examine function.
 
