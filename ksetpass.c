@@ -65,8 +65,8 @@ main(int argc, char *argv[])
         die_krb5(ctx, ret, "cannot change password for %s", argv[1]);
     if (result_code != 0)
         die("password change failed: (%d) %.*s%s%.*s", result_code,
-            result_code_string.length, result_code_string.data,
+            result_code_string.length, (char *) result_code_string.data,
             result_string.length ? ": " : "",
-            result_string.length, result_string.data);
+            result_string.length, (char *) result_string.data);
     exit(0);
 }
