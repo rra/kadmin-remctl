@@ -1,7 +1,6 @@
 #!/bin/sh
 #
-# Run this shell script to bootstrap as necessary after a fresh checkout
-# from Subversion.
+# Run this shell script to bootstrap as necessary after a fresh checkout.
 
 autoreconf -i
 rm -rf autom4te.cache
@@ -14,3 +13,5 @@ pod2man --release="$version" --center="kadmin-remctl" passwd_change.pod \
     > passwd_change.1
 pod2man --release="$version" --center="kadmin-remctl" --section=8 \
     kadmin-backend > kadmin-backend.8
+pod2man --release="$version" --center="kadmin-remctl" --section=8 \
+    kadmin-backend-heim > kadmin-backend-heim.8
