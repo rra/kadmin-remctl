@@ -52,4 +52,4 @@ WARNINGS = -g -O -DDEBUG=1 -Wall -W -Wendif-labels -Wpointer-arith \
         -Wmissing-prototypes -Wnested-externs -Werror
 
 warnings:
-	$(MAKE) CFLAGS='$(WARNINGS)'
+	$(MAKE) V=0 CFLAGS='$(WARNINGS)'
