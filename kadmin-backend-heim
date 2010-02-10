@@ -207,10 +207,7 @@ sub kadmin_handle {
     my ($instance) = @_;
     return $CONFIG{$instance}{handle} if exists $CONFIG{$instance}{handle};
 
-    # TODO - Realm is needed for testing ATM, but should not be normally
-    #        required.
     my $kadmin =  Heimdal::Kadm5::Client->new(
-	Realm       => 'heimdal.stanford.edu',
 	Principal   => $CONFIG{$instance}{k5_admin},
 	Keytab      => $CONFIG{$instance}{k5_keytab},
 	RaiseErrors => 1,
@@ -356,7 +353,7 @@ sub kadmin_reset {
     $principal = "$principal/$instance" if $instance;
 
     my $kadmin = kadmin_handle ($instance);
-    eval { $kadmin->changePassword ($instance, $password) };
+    eval { $kadmin->changePassword ($principal, $password) };
     if ($@) {
 	warn "error: $@\n";
 	exit 1;
@@ -376,16 +373,19 @@ sub kpasswd {
     check_password ($old);
     check_password ($new);
     $principal = "$principal/$instance" if $instance;
+
     my $kpasswd = Expect->spawn ($K5_KPASSWD, $principal);
     unless ($kpasswd) {
         die "error: cannot run $K5_KPASSWD\n";
     }
-    unless ($kpasswd->expect (2, 'Password for')) {
+    unless ($kpasswd->expect (2, '-re', '\S+\'s Password:')) {
         die "error: cannot talk to $K5_KPASSWD\n";
     }
     $kpasswd->send ($old . "\n");
+
     my ($num, $error, $match, $before, $after)
-        = $kpasswd->expect (2, 'kpasswd: ', 'Enter new password: ');
+        = $kpasswd->expect (2, 'kpasswd: krb5_get_init_creds:', 
+                            '-re', 'New password for \S+:');
     if ($num == 1) {
         $after =~ s/\r?\n.*//s;
         warn "error: $after\n";
@@ -395,13 +395,14 @@ sub kpasswd {
         die "error: Expect said $error\n";
     }
     $kpasswd->send ($new . "\n");
-    unless ($kpasswd->expect (2, 'Enter it again: ')) {
+    unless ($kpasswd->expect (2, '-re', 
+                              'Verifying - New password for \S+: ')) {
         die "error: cannot talk to $K5_KPASSWD\n";
     }
     $kpasswd->send ($new . "\n");
     ($num, $error, $match, $before, $after)
-        = $kpasswd->expect (30, 'Password change rejected: ',
-                            'Password changed.');
+        = $kpasswd->expect (30, 'Soft error : ',
+                            'Success : Password changed');
     if ($num == 1) {
         $after =~ s/\..*//s;
         $after =~ s/\r?\n/ /g;
@@ -882,12 +883,16 @@ sub enable_principal {
 ##############################################################################
 
 # Convert epoch seconds into a date compatible with Kerberos output.
-sub _sec2date { $_[0] ? strftime "%c", gmtime($_[0]): '[never]'; }
+sub _sec2date { 
+    $_[0] ? strftime "%a %b %d %T %Z %Y", localtime($_[0]): '[never]'; 
+}
 
 # Convert epoch seconds into a date compatible with Kerberos output.  This
 # version is specifically for the password expiration date, which gives a
 # different output for unset values.
-sub _sec2pwddate { $_[0] ? strftime "%c", gmtime($_[0]): '[none]'; }
+sub _sec2pwddate { 
+    $_[0] ? strftime "%a %b %d %T %Z %Y", localtime($_[0]): '[none]'; 
+}
 
 # Convert seconds into a days and hours format for ticket lifetime and
 # maximum lifetime.
@@ -896,7 +901,7 @@ sub _sec2days {
     my $val = Time::Seconds->new($seconds);
     my $str = sprintf ("%d days %02d:%02d:%02d", $val->days, $val->hours % 24,
 	$val->minutes % 60, $val->seconds % 60);
-    $str =~ s#days#day# if $val->days == 1;
+    $str =~ s#days#day# if $val->days < 2;
     return $str;
 }
 
@@ -1019,42 +1024,48 @@ sub examine_principal {
     # Replicate kadmin getprinc.  Heimdal::Kadm5 has a command for this, but
     # does so in a heimdal kadmin format.  For downstream apps, we need to
     # replicate the MIT output.
+    my ($princdata, $output);
+    $output = '';
     my $kadmin = kadmin_handle ($instance);
-    my $princdata = $kadmin->getPrincipal ($principal);
-    my $output = '';
-    $output .= sprintf ("%s: %s\n", 'Principal', $princdata->getPrincipal);
-    $output .= sprintf ("%s: %s\n", 'Expiration date',
-			_sec2date($princdata->getPrincExpireTime));
-    $output .= sprintf ("%s: %s\n", 'Last password change',
-			_sec2date($princdata->getLastPwdChange));
-    $output .= sprintf ("%s: %s\n", 'Password expiration date',
-			_sec2pwddate($princdata->getPwExpiration));
-    $output .= sprintf ("%s: %s\n", 'Maximum ticket life',
-			_sec2days($princdata->getMaxLife));
-    $output .= sprintf ("%s: %s\n", 'Maximum renewable life',
-			_sec2days($princdata->getMaxRenewableLife));
-    $output .= sprintf ("%s: %s (%s)\n", 'Last modified', 
-			_sec2date($princdata->getModDate), 
-			$princdata->getModName);
-    $output .= sprintf ("%s: %s\n", 'Last successful authentication',
-			_sec2date($princdata->getLastSuccess));
-    $output .= sprintf ("%s: %s\n", 'Last failed authentication',
-			_sec2date($princdata->getLastFailed));
-    $output .= sprintf ("%s: %d\n", 'Failed password attempts', 
-			$princdata->getFailAuthCounts);
-    $output .= sprintf ("%s: %d\n", 'Number of keys', 
-			scalar @{$princdata->getKeytypes});
-    foreach my $kt (@{$princdata->getKeytypes}) {
-	$output .= sprintf ("%s: vno %d, %s, %s\n", 'Key', 
-			    $princdata->getKvno, _keytype2text($kt->[0]), 
-			    $kt->[1]);
-    }
-    $output .= sprintf ("%s: %s\n", 'Attributes', 
-			_attr2str($princdata->getAttributes));
+    $princdata = $kadmin->getPrincipal ($principal);
+    if (!defined $princdata) { 
+        $output = "get_principal: Principal does not exist while "
+            ."retrieving \"$principal\".\n";
+    } else {
+        $output .= sprintf ("%s: %s\n", 'Principal', $princdata->getPrincipal);
+        $output .= sprintf ("%s: %s\n", 'Expiration date',
+                            _sec2date($princdata->getPrincExpireTime));
+        $output .= sprintf ("%s: %s\n", 'Last password change',
+                            _sec2date($princdata->getLastPwdChange));
+        $output .= sprintf ("%s: %s\n", 'Password expiration date',
+                            _sec2pwddate($princdata->getPwExpiration));
+        $output .= sprintf ("%s: %s\n", 'Maximum ticket life',
+                            _sec2days($princdata->getMaxLife));
+        $output .= sprintf ("%s: %s\n", 'Maximum renewable life',
+                            _sec2days($princdata->getMaxRenewableLife));
+        $output .= sprintf ("%s: %s (%s)\n", 'Last modified', 
+                            _sec2date($princdata->getModDate), 
+                            $princdata->getModName);
+        $output .= sprintf ("%s: %s\n", 'Last successful authentication',
+                            _sec2date($princdata->getLastSuccess));
+        $output .= sprintf ("%s: %s\n", 'Last failed authentication',
+                            _sec2date($princdata->getLastFailed));
+        $output .= sprintf ("%s: %d\n", 'Failed password attempts', 
+                            $princdata->getFailAuthCounts);
+        $output .= sprintf ("%s: %d\n", 'Number of keys', 
+                            scalar @{$princdata->getKeytypes});
+        foreach my $kt (@{$princdata->getKeytypes}) {
+            $output .= sprintf ("%s: vno %d, %s, %s\n", 'Key', 
+                                $princdata->getKvno, _keytype2text($kt->[0]), 
+                                $kt->[1]);
+        }
+        $output .= sprintf ("%s: %s\n", 'Attributes', 
+                            _attr2str($princdata->getAttributes));
 
-    my $policy = $princdata->getPolicy;
-    $policy = 'standard' unless $policy;
-    $output .= sprintf ("%s: %s\n", 'Policy', $policy);
+        my $policy = $princdata->getPolicy;
+        $policy = 'standard' unless $policy;
+        $output .= sprintf ("%s: %s\n", 'Policy', $policy);
+    }
 
     if ($CONFIG{$instance}{afs_fake}) {
         my $k4output;
