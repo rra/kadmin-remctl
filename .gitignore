@@ -12,6 +12,8 @@
 /passwd_change
 /stamp-h1
 .deps/
+.dirstamp
 *.1
 *.8
+*.a
 *.o
