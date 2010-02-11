@@ -227,3 +227,11 @@ HOMEPAGE AND SOURCE REPOSITORY
   or view the repository via the web at:
 
       http://git.eyrie.org/?p=kerberos/kadmin-remctl.git
+
+THANKS
+
+  To Jon Robertson for the port of kadmin-backend to Heimdal.
+
+  To Derrick Brashear and Ken Hornstein of Sine Nomine Associates, who did
+  work on behalf of Stanford University on realm synchronization that was
+  a predecessor of the ksetpass program.
