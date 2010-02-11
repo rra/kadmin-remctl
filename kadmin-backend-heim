@@ -1055,9 +1055,11 @@ sub examine_principal {
         $output .= sprintf ("%s: %d\n", 'Number of keys', 
                             scalar @{$princdata->getKeytypes});
         foreach my $kt (@{$princdata->getKeytypes}) {
+            my $enctype = _keytype2text ($kt->[0]);
+            my $salt = $kt->[1];
+            $salt =~ s#pw-salt#no salt#;
             $output .= sprintf ("%s: vno %d, %s, %s\n", 'Key', 
-                                $princdata->getKvno, _keytype2text($kt->[0]), 
-                                $kt->[1]);
+                                $princdata->getKvno, $enctype, $salt);
         }
         $output .= sprintf ("%s: %s\n", 'Attributes', 
                             _attr2str($princdata->getAttributes));
