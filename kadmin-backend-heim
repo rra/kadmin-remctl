@@ -3,8 +3,9 @@
 # kadmin-backend -- remctl interface to kadmin functionality.
 #
 # Written by Russ Allbery <rra@stanford.edu>
+# Heimdal port written by Jon Robertson <jonrober@stanford.edu>
 # Based heavily on work by Roland Schemers
-# Copyright 2003, 2007, 2008, 2009
+# Copyright 2003, 2007, 2008, 2009, 2010
 #     Board of Trustees, Leland Stanford Jr. University
 #
 # Permission to use, copy, modify, and distribute this software and its
@@ -202,7 +203,7 @@ sub kadmin_config {
 
 # Create a Heimdal::Kadm5 connection, loading configuration from the config
 # for an instance, and return that object.  Cache the client object for
-# any further calls. 
+# any further calls.
 sub kadmin_handle {
     my ($instance) = @_;
     return $CONFIG{$instance}{handle} if exists $CONFIG{$instance}{handle};
@@ -384,7 +385,7 @@ sub kpasswd {
     $kpasswd->send ($old . "\n");
 
     my ($num, $error, $match, $before, $after)
-        = $kpasswd->expect (2, 'kpasswd: krb5_get_init_creds:', 
+        = $kpasswd->expect (2, 'kpasswd: krb5_get_init_creds:',
                             '-re', 'New password for \S+:');
     if ($num == 1) {
         $after =~ s/\r?\n.*//s;
@@ -395,7 +396,7 @@ sub kpasswd {
         die "error: Expect said $error\n";
     }
     $kpasswd->send ($new . "\n");
-    unless ($kpasswd->expect (2, '-re', 
+    unless ($kpasswd->expect (2, '-re',
                               'Verifying - New password for \S+: ')) {
         die "error: cannot talk to $K5_KPASSWD\n";
     }
@@ -883,15 +884,15 @@ sub enable_principal {
 ##############################################################################
 
 # Convert epoch seconds into a date compatible with Kerberos output.
-sub _sec2date { 
-    $_[0] ? strftime "%a %b %d %T %Z %Y", localtime($_[0]): '[never]'; 
+sub _sec2date {
+    $_[0] ? strftime "%a %b %d %T %Z %Y", localtime($_[0]): '[never]';
 }
 
 # Convert epoch seconds into a date compatible with Kerberos output.  This
 # version is specifically for the password expiration date, which gives a
 # different output for unset values.
-sub _sec2pwddate { 
-    $_[0] ? strftime "%a %b %d %T %Z %Y", localtime($_[0]): '[none]'; 
+sub _sec2pwddate {
+    $_[0] ? strftime "%a %b %d %T %Z %Y", localtime($_[0]): '[none]';
 }
 
 # Convert seconds into a days and hours format for ticket lifetime and
@@ -932,13 +933,13 @@ sub _attr2str {
     return join (' ', sort @attrs);
 }
 
-# Given a short text for a keytype, expand it into a full description as 
+# Given a short text for a keytype, expand it into a full description as
 # would come from MIT kerberos output.
 sub _keytype2text {
     my ($keytype) = @_;
-    my %typemaps = ('aes256-cts-hmac-sha1-96' 
+    my %typemaps = ('aes256-cts-hmac-sha1-96'
 		        => 'AES-256 CTS mode with 96-bit SHA-1 HMAC',
-		    'aes128-cts-hmac-sha1-96' 
+		    'aes128-cts-hmac-sha1-96'
 		        => 'AES-128 CTS mode with 96-bit SHA-1 HMAC',
 		    'arcfour-hmac-md5' => 'ArcFour with HMAC/md5',
 		    'des-cbc-crc'      => 'DES cbc mode with CRC-32',
@@ -1028,7 +1029,7 @@ sub examine_principal {
     $output = '';
     my $kadmin = kadmin_handle ($instance);
     $princdata = $kadmin->getPrincipal ($principal);
-    if (!defined $princdata) { 
+    if (!defined $princdata) {
         $output = "get_principal: Principal does not exist while "
             ."retrieving \"$principal\".\n";
     } else {
@@ -1043,25 +1044,25 @@ sub examine_principal {
                             _sec2days($princdata->getMaxLife));
         $output .= sprintf ("%s: %s\n", 'Maximum renewable life',
                             _sec2days($princdata->getMaxRenewableLife));
-        $output .= sprintf ("%s: %s (%s)\n", 'Last modified', 
-                            _sec2date($princdata->getModDate), 
+        $output .= sprintf ("%s: %s (%s)\n", 'Last modified',
+                            _sec2date($princdata->getModDate),
                             $princdata->getModName);
         $output .= sprintf ("%s: %s\n", 'Last successful authentication',
                             _sec2date($princdata->getLastSuccess));
         $output .= sprintf ("%s: %s\n", 'Last failed authentication',
                             _sec2date($princdata->getLastFailed));
-        $output .= sprintf ("%s: %d\n", 'Failed password attempts', 
+        $output .= sprintf ("%s: %d\n", 'Failed password attempts',
                             $princdata->getFailAuthCounts);
-        $output .= sprintf ("%s: %d\n", 'Number of keys', 
+        $output .= sprintf ("%s: %d\n", 'Number of keys',
                             scalar @{$princdata->getKeytypes});
         foreach my $kt (@{$princdata->getKeytypes}) {
             my $enctype = _keytype2text ($kt->[0]);
             my $salt = $kt->[1];
             $salt =~ s#pw-salt#no salt#;
-            $output .= sprintf ("%s: vno %d, %s, %s\n", 'Key', 
+            $output .= sprintf ("%s: vno %d, %s, %s\n", 'Key',
                                 $princdata->getKvno, $enctype, $salt);
         }
-        $output .= sprintf ("%s: %s\n", 'Attributes', 
+        $output .= sprintf ("%s: %s\n", 'Attributes',
                             _attr2str($princdata->getAttributes));
 
         my $policy = $princdata->getPolicy;
