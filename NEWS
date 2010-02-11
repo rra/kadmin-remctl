@@ -9,6 +9,12 @@ kadmin-remctl 2.5 (unreleased)
     is a temporary measure until both scripts can be refactored as Perl
     modules and use a better method to avoid code duplication.
 
+    Use the Heimdal external program API for password strength checking in
+    kadmin-backend-heim and check password strength on create if strength
+    checking is enabled for that instance, since the Heimdal kadmin API
+    doesn't enforce password strength on passwords changed by
+    administrators.
+
     Allow - in principal names for the examine function.
 
     Add new config item for each instance, locked.  This optional value

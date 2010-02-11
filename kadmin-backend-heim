@@ -74,6 +74,7 @@ our $LDAPSEARCH = 'ldapsearch';
 #     acl        => File listing principals that can manage this instance
 #     allowed    => Regex matching all permitted principal names (w/o instance)
 #     checking   => True if we should enable password strength checking
+#     pwcheck    => Program to check password quality (Heimdal protocol)
 #     locked     => Program to check to see if we can enable an account
 #     k5_admin   => Principal for Kerberos v5 kadmin authentication
 #     k5_host    => Admin server for Kerberos v5 kadmin operations
@@ -238,6 +239,9 @@ sub kadmin_create {
     check_password ($password);
     kadmin_config ($instance) or return;
     $principal = "$principal/$instance" if $instance;
+    if ($CONFIG{$instance}{checking}) {
+        return unless password_check ($principal, $instance, $password);
+    }
 
     my $kadmin = kadmin_handle ($instance);
     my $princdata = eval { $kadmin->makePrincipal ($principal) };
@@ -323,28 +327,6 @@ sub kadmin_enable {
     }
 }
 
-# The K5 kadmin interface doesn't support checking the strength of a password
-# without trying to change a password.  We therefore test the strength of a
-# password by changing the password of a designated special account (which is
-# also set DISABLE_ALL_TIX) with the same password policy as our user accounts
-# and seeing if the password is accepted.
-#
-# On success, do nothing.  On failure, print the error message from K5 kadmin.
-# We don't die here because of weird interface requirements.
-sub kadmin_validate {
-    my ($principal, $instance, $password) = @_;
-    check_password ($password);
-    my $kadmin = kadmin_handle ($instance);
-    eval { $kadmin->changePassword ($STRENGTH, $password) };
-
-    # TODO: Need to check $@ and do some explicit messages based on contents.
-    if ($@) {
-	warn "error testing password strength: $@\n";
-    } else {
-	eval { $kadmin->randKeyPrincipal ($STRENGTH) };
-    }
-}
-
 # Reset a password via kadmin.
 sub kadmin_reset {
     my ($principal, $instance, $password) = @_;
@@ -359,6 +341,45 @@ sub kadmin_reset {
 	warn "error: $@\n";
 	exit 1;
     }
+}
+
+##############################################################################
+# Password quality functions
+##############################################################################
+
+# Given a principal and a password, check password quality using the Heimdal
+# external program interface.  Returns true if the password is okay, false
+# otherwise.
+sub password_check {
+    my ($principal, $instance, $password) = @_;
+    check_principal ($principal, $instance);
+    check_password ($password);
+    $principal = "$principal/$instance" if $instance;
+    return unless $CONFIG{$instance}{pwcheck};
+    my $pid = open (CHECKER, '-|');
+    if (not defined $pid) {
+        die "error: cannot fork: $!\n";
+    } elsif ($pid == 0) {
+        open (STDERR, '>&STDOUT') or exit 1;
+        open (PROGRAM, '|-', $CONFIG{$instance}{pwcheck}, $principal)
+            or die "error: cannot run $CONFIG{$instance}{pwcheck}: $!\n";
+        print PROGRAM "principal: $principal\n";
+        print PROGRAM "new-password: $password\n";
+        print PROGRAM "end\n";
+        close PROGRAM;
+        exit ($? >> 8);
+    } else {
+        my $output = <CHECKER>;
+        close CHECKER;
+        unless ($output eq "APPROVED\n" and $? == 0) {
+            $output =~ s/\n/ /g;
+            $output =~ s/\s+$//;
+            warn "error: Insecure password rejected\n";
+            print "retstr: Insecure password: $output\n";
+            return;
+        }
+    }
+    return 1;
 }
 
 ##############################################################################
@@ -1120,12 +1141,10 @@ if ($cmd eq 'change_passwd') {
 
 } elsif ($cmd eq 'check_passwd') {
 
-    # The principal is accepted for compatibilty with older versions but
-    # completely ignored.
     my $princ = shift;
     my $pass  = shift or die "error: missing password\n";
 
-    kadmin_validate ('', '', $pass);
+    password_check ($princ, '', $pass);
 
 } elsif ($cmd eq 'create') {
 
