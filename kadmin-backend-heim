@@ -430,10 +430,9 @@ sub kpasswd {
         $after =~ s/\..*//s;
         $after =~ s/\r?\n/ /g;
         $after =~ s/\s+See the kpasswd man page.*//s;
-        if ($after =~ /^External password quality program failed: (it's WAY|it is) too short/) {
+        if ($after =~ /^External password quality program failed: (it\'s WAY|it is) too short/) {
             $after = 'New password is too short';
-        } elsif ($after =~ /^External password quality program failed: it is based on a dictionary word/
-            || $after =~ /^External password quality program failed: it does not contain enough DIFFERENT characters/) {
+        } elsif ($after =~ /^External password quality program failed:/) {
             $after = 'New password was found in a dictionary of possible '
                 .'passwords and therefore may be easily guessed';
         }
