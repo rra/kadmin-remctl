@@ -410,6 +410,10 @@ sub kpasswd {
                             '-re', 'New password for \S+:');
     if ($num == 1) {
         $after =~ s/\r?\n.*//s;
+        $after =~ s/^\s+//;
+        if ($after eq 'Preauthentication failed') {
+            $after = 'Password incorrect while getting initial ticket';
+        }
         warn "error: $after\n";
         print "retstr: $after\n";
         exit 1;
@@ -429,6 +433,13 @@ sub kpasswd {
         $after =~ s/\..*//s;
         $after =~ s/\r?\n/ /g;
         $after =~ s/\s+See the kpasswd man page.*//s;
+        if ($after =~ /^External password quality program failed: it\'s WAY too short/) {
+            $after = 'New password is too short';
+        } elsif ($after =~ /^External password quality program failed: it is based on a dictionary word/
+            || $after =~ /^External password quality program failed: it does not contain enough DIFFERENT characters/) {
+            $after = 'New password was found in a dictionary of possible '
+                .'passwords and therefore may be easily guessed';
+        }
         warn "error: $after\n";
         print "retstr: $after\n";
         exit 1;
