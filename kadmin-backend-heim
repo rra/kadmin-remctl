@@ -239,9 +239,6 @@ sub kadmin_create {
     check_password ($password);
     kadmin_config ($instance) or return;
     $principal = "$principal/$instance" if $instance;
-    if ($CONFIG{$instance}{checking}) {
-        return unless password_check ($principal, $instance, $password);
-    }
 
     my $kadmin = kadmin_handle ($instance);
     my $princdata = eval { $kadmin->makePrincipal ($principal) };
@@ -824,6 +821,13 @@ sub reset_password {
         warn "error: password changes not permitted for that user\n";
         exit 2;
     }
+    if ($CONFIG{$instance}{checking}) {
+        unless (password_check ($principal, $instance, $password)) {
+            warn "error: password rejected by strength checking\n";
+            print "retstr: password rejected by strength checking\n";
+            exit 1;
+        }
+    }
     if ($CONFIG{$instance}{k5_admin}) {
         kadmin_reset ($principal, $instance, $password);
     } elsif ($CONFIG{$instance}{ad_config}) {
@@ -860,6 +864,13 @@ sub create_principal {
         warn "error: account $principal/$instance already exists\n";
         print "retstr: account $principal/$instance already exists\n";
         exit 1;
+    }
+    if ($CONFIG{$instance}{checking}) {
+        unless (password_check ($principal, $instance, $password)) {
+            warn "error: password rejected by strength checking\n";
+            print "retstr: password rejected by strength checking\n";
+            exit 1;
+        }
     }
     kaserver_create ($principal, $instance, $password, $status);
     unless (ad_ldap_exists ($principal, $instance)) {
