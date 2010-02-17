@@ -9,6 +9,8 @@ kadmin-remctl (3.0-1) UNRELEASED; urgency=low
       passwd_change.
   * Package the Heimdal version of kadmin-backend as a separate
     kadmin-remctl-heimdal package.
+  * Remove comerr-dev build dependency, no longer required with the better
+    error handling in ksetpass and passwd_change.
 
  -- Russ Allbery <rra@debian.org>  Wed, 17 Feb 2010 11:04:35 -0800
 
