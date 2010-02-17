@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 2.5 (unreleased)
+kadmin-remctl 3.0 (2010-02-17)
 
     Add kadmin-backend-heim, which duplicates the kadmin-backend
     functionality for Heimdal.  The examine function of this backend
