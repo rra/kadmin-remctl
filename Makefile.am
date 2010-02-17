@@ -7,8 +7,8 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = LICENSE docs/design ksetpass.pod passwd_change.pod \
-	remctl/kadmin remctl/password
+EXTRA_DIST = .gitignore LICENSE autogen docs/design ksetpass.pod	\
+	passwd_change.pod remctl/kadmin remctl/password
 
 # Globally build everything against the Kerberos libraries.
 AM_CPPFLAGS = $(KRB5_CPPFLAGS)
