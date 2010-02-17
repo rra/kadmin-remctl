@@ -1,4 +1,4 @@
-kadmin-remctl (3.0-1) UNRELEASED; urgency=low
+kadmin-remctl (3.0-1) unstable; urgency=low
 
   * New upstream release.
     - Add a version of kadmin-backend for Heimdal.
@@ -14,7 +14,7 @@ kadmin-remctl (3.0-1) UNRELEASED; urgency=low
   * Add Homepage, Vcs-Git, and Vcs-Browser control fields.
   * Update standards version to 3.8.4 (no changes required).
 
- -- Russ Allbery <rra@debian.org>  Wed, 17 Feb 2010 11:04:35 -0800
+ -- Russ Allbery <rra@debian.org>  Wed, 17 Feb 2010 12:49:14 -0800
 
 kadmin-remctl (2.4-1) unstable; urgency=low
 
