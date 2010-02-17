@@ -34,8 +34,6 @@ The maximum length of the password is limited to BUFSIZ, generally between
 1KB and 4KB, because I'm lazy and didn't feel like writing buffer
 reallocation code.
 
-Error reporting is horrible.
-
 =head1 SEE ALSO
 
 kpasswd(1)

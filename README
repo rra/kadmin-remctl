@@ -1,9 +1,9 @@
-                            kadmin-remctl 2.4
+                            kadmin-remctl 3.0
              (remctl interface for Kerberos kadmin functions)
 
                 Written by Russ Allbery <rra@stanford.edu>
 
-  Copyright 1997, 2003, 2007, 2008, 2009 Board of Trustees, Leland
+  Copyright 1997, 2003, 2007, 2008, 2009, 2010 Board of Trustees, Leland
   Stanford Jr. University.  This software is distributed under a BSD-style
   license.  Please see the file LICENSE in the distribution for more
   information.
@@ -67,10 +67,12 @@ DESCRIPTION
 REQUIREMENTS
 
   The kadmin backend is written in Perl and requires the Perl Expect
-  module.  It calls the MIT Kerberos v5 kadmin and kpasswd programs and
-  therefore requires that they be available.  For integration with the AFS
-  kaserver Kerberos v4 realm, it uses kasetkey.  The Kerberos v4
-  synchronization is disabled by default.
+  module.  The MIT version (kadmin-backend) calls the MIT Kerberos v5
+  kadmin and kpasswd programs and therefore requires that they be
+  available.  The Heimdal version similarly requires kpasswd, but uses the
+  Perl module Heimdal::Kadm5 for kadmin operations and requires it be
+  installed.  For integration with the AFS kaserver Kerberos v4 realm, it
+  uses kasetkey.  The Kerberos v4 synchronization is disabled by default.
 
   The kadmin backend can propagate instance creation and deletion to an
   Active Directory.  To use this support, you will need the Perl Encode,
@@ -83,9 +85,8 @@ REQUIREMENTS
 
   The passwd_change C client requires the C libremctl library be available
   to build (plus, obviously, a C compiler).  It also requires a Kerberos
-  library; either MIT Kerberos or Heimdal should be sufficiant (although
-  currently the client will produce much better error messages using MIT
-  Kerberos).
+  library; any version of either MIT Kerberos or Heimdal should be
+  sufficiant.
 
   ksetpass requires a Kerberos library; either MIT Kerberos or Heimdal
   should be sufficient.
@@ -226,3 +227,11 @@ HOMEPAGE AND SOURCE REPOSITORY
   or view the repository via the web at:
 
       http://git.eyrie.org/?p=kerberos/kadmin-remctl.git
+
+THANKS
+
+  To Jon Robertson for the port of kadmin-backend to Heimdal.
+
+  To Derrick Brashear and Ken Hornstein of Sine Nomine Associates, who did
+  work on behalf of Stanford University on realm synchronization that was
+  a predecessor of the ksetpass program.
