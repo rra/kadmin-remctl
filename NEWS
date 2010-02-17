@@ -1,5 +1,32 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.0 (2010-02-17)
+
+    Add kadmin-backend-heim, which duplicates the kadmin-backend
+    functionality for Heimdal.  The examine function of this backend
+    duplicates the output of the MIT getprinc function so that the output
+    is compatible with the output of kadmin-backend.  This separate script
+    is a temporary measure until both scripts can be refactored as Perl
+    modules and use a better method to avoid code duplication.
+
+    Use the Heimdal external program API for password strength checking in
+    kadmin-backend-heim and check password strength on create if strength
+    checking is enabled for that instance, since the Heimdal kadmin API
+    doesn't enforce password strength on passwords changed by
+    administrators.
+
+    Allow - in principal names for the examine function.
+
+    Add new config item for each instance, locked.  This optional value
+    contains an array of a command and any arguments to it, which is 
+    called to determine if the instance is locked for some external 
+    policy reason.  If so, the enable command will fail for this instance.
+
+    Significantly improve the error reporting in ksetpass and
+    passwd_change by using modern Kerberos error functions where
+    available, and avoid Kerberos API calls that are deprecated on
+    Heimdal.
+
 kadmin-remctl 2.4 (2009-10-05)
 
     When enabling or disabling accounts in Active Directory via LDAP, send
