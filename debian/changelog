@@ -11,6 +11,7 @@ kadmin-remctl (3.0-1) UNRELEASED; urgency=low
     kadmin-remctl-heimdal package.
   * Remove comerr-dev build dependency, no longer required with the better
     error handling in ksetpass and passwd_change.
+  * Add Homepage, Vcs-Git, and Vcs-Browser control fields.
   * Update standards version to 3.8.4 (no changes required).
 
  -- Russ Allbery <rra@debian.org>  Wed, 17 Feb 2010 11:04:35 -0800
