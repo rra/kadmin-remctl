@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
+HEIMDAL = debian/kadmin-remctl-heimdal
+
 CFLAGS = -g -Wall -DPASSWD_FILE=\\\"/afs/ir/service/etc/passwd.all\\\" \
 	-DHOST=\\\"password-change.stanford.edu\\\"
 ifneq (,$(filter noopt,$(DEB_BUILD_OPTIONS)))
@@ -19,6 +21,15 @@ override_dh_auto_install:
 	install -d debian/kadmin-remctl/etc/remctl/reset
 	install -m 644 remctl/password \
 	    debian/kadmin-remctl/etc/remctl/reset/remctl.conf
+
+override_dh_install:
+	dh_install
+	mv $(HEIMDAL)/usr/sbin/kadmin-backend-heim \
+	    $(HEIMDAL)/usr/sbin/kadmin-backend
+	mv $(HEIMDAL)/usr/share/man/man8/kadmin-backend-heim.8 \
+	    $(HEIMDAL)/usr/share/man/man8/kadmin-backend.8
+	perl -i -pe 's/KADMIN-BACKEND-HEIM/KADMIN-BACKEND/g' \
+	    $(HEIMDAL)/usr/share/man/man8/kadmin-backend.8
 
 override_dh_installchangelogs:
 	dh_installchangelogs NEWS

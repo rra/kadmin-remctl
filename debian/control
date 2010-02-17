@@ -10,11 +10,27 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, krb5-user, libexpect-perl
 Recommends: kasetkey (>= 0.9), kstart, ldap-utils, libtext-template-perl,
  remctl-server
-Description: remctl backend providing kadmin functions
+Conflicts: kadmin-remctl-heimdal
+Description: remctl backend providing kadmin functions (MIT)
  This package provides a remctl backend and configuration for doing kadmin
- functions via remctl.  It also includes the ksetpass client, which
- changes passwords using the Kerberos password change protocol and doesn't
- require the current password (with appropriate server ACLs).
+ functions against an MIT Kerberos KDC via remctl.  It also includes the
+ ksetpass client, which changes passwords using the Kerberos password
+ change protocol and doesn't require the current password (with
+ appropriate server ACLs).
+
+Package: kadmin-remctl-heimdal
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libexpect-perl,
+ libheimdal-kadm5-perl
+Recommends: kasetkey (>= 0.9), kstart, ldap-utils, libtext-template-perl,
+ remctl-server
+Conflicts: kadmin-remctl
+Description: remctl backend providing kadmin functions (Heimdal)
+ This package provides a remctl backend and configuration for doing kadmin
+ functions against a Heimdal KDC via remctl.  It also includes the
+ ksetpass client, which changes passwords using the Kerberos password
+ change protocol and doesn't require the current password (with
+ appropriate server ACLs).
 
 Package: password-change
 Architecture: any

@@ -7,6 +7,8 @@ kadmin-remctl (3.0-1) UNRELEASED; urgency=low
       a principal is locked and disallow enables if it is.
     - Significantly improve error reporting in ksetpass and
       passwd_change.
+  * Package the Heimdal version of kadmin-backend as a separate
+    kadmin-remctl-heimdal package.
 
  -- Russ Allbery <rra@debian.org>  Wed, 17 Feb 2010 11:04:35 -0800
 
