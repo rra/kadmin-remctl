@@ -3,7 +3,7 @@ Section: net
 Priority: extra
 Maintainer: Russ Allbery <rra@debian.org>
 Build-Depends: debhelper (>= 7.0.50~), libkrb5-dev, libremctl-dev
-Standards-Version: 3.8.3
+Standards-Version: 3.8.4
 
 Package: kadmin-remctl
 Architecture: any
