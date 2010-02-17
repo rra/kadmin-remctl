@@ -7,7 +7,8 @@ Standards-Version: 3.8.4
 
 Package: kadmin-remctl
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, krb5-user, libexpect-perl
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, krb5-user,
+ libexpect-perl
 Recommends: kasetkey (>= 0.9), kstart, ldap-utils, libtext-template-perl,
  remctl-server
 Conflicts: kadmin-remctl-heimdal
@@ -20,8 +21,8 @@ Description: remctl backend providing kadmin functions (MIT)
 
 Package: kadmin-remctl-heimdal
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, heimdal-clients | krb5-user,
- libexpect-perl, libheimdal-kadm5-perl
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends},
+ heimdal-clients | krb5-user, libexpect-perl, libheimdal-kadm5-perl
 Recommends: kasetkey (>= 0.9), kstart, ldap-utils, libtext-template-perl,
  remctl-server
 Conflicts: kadmin-remctl
