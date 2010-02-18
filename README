@@ -11,14 +11,14 @@
 BLURB
 
   kadmin-remctl provides a remctl backend that implements basic Kerberos
-  account administration functions (create, delete, enable, disable, reset
-  password, examine) plus user password changes and a call to
+  account administration functions (create, delete, enable, disable,
+  reset password, examine) plus user password changes and a call to
   strength-check a given password.  It can also provide similar management
-  of instances and creation, deletion, and management of accounts in MIT
-  Kerberos, Active Directory, and an AFS kaserver where appropriate.  Also
-  included is a client for privileged users to use for password resets.
-  Many of the defaults and namespace checks are Stanford-specific, but it
-  can be modified for other sites.
+  of instances and creation, deletion, and management of accounts in
+  Heimdal, MIT Kerberos, Active Directory, and an AFS kaserver where
+  appropriate.  Also included is a client for privileged users to use
+  for password resets.  Many of the defaults and namespace checks are
+  Stanford-specific, but it can be modified for other sites.
 
 DESCRIPTION
 
