@@ -267,6 +267,9 @@ sub kadmin_create {
     if ($status ne 'enabled') {
         $command .= ' -allow_tix';
     }
+    if (exists $CONFIG{$instance}{extra_options}) {
+        $command .= ' ' . $CONFIG{$instance}{extra_options};
+    }
     my $k5admin = spawn_k5admin ($instance);
     unless ($k5admin->expect (2, 'kadmin:')) {
         die "error: cannot talk to $K5_KADMIN\n";
@@ -363,6 +366,23 @@ sub kadmin_enable {
     }
     my ($status, $output)
         = run_k5admin ($instance, "modprinc +allow_tix $principal");
+    if ($status != 0 || $output =~ /^modify_principal: /) {
+        $output =~ s/^modify_principal: //;
+        $output =~ s/\r?\n.*//;
+        warn "error: $output\n";
+        print "retstr: $output\n";
+        exit 1;
+    }
+}
+
+# Change a principal's expiration date using kadmin.
+sub kadmin_expiration {
+    my ($principal, $instance, $expire) = @_;
+    check_principal ($principal, $instance);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+    my ($status, $output)
+        = run_k5admin ($instance, "modprinc -expire \"$expire\" $principal");
     if ($status != 0 || $output =~ /^modify_principal: /) {
         $output =~ s/^modify_principal: //;
         $output =~ s/\r?\n.*//;
@@ -1117,6 +1137,13 @@ if ($cmd eq 'change_passwd') {
 
     enable_principal ($princ, '');
 
+} elsif ($cmd eq 'expiration') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $expiration = shift or die "error: missing expiration date\n";
+
+    kadmin_expiration ($princ, '', $expiration);
+
 } elsif ($cmd eq 'examine') {
 
     my $princ = shift or die "error: missing principal\n";
@@ -1217,6 +1244,8 @@ B<kadmin-backend> create I<user> I<password> (enabled | disabled)
 
 B<kadmin-backend> (delete | disable | enable | examine) I<user>
 
+B<kadmin-backend> expiration I<user> I<date>
+
 B<kadmin-backend> (reset_passwd | reset) I<user> I<password>
 
 B<kadmin-backend> instance check I<user> I<instance>
@@ -1298,6 +1327,8 @@ looking them up there.  The output format for the AFS kaserver is the same
 as the old Kerberos v4 B<kadmin> output, and the output for Kerberos v5 is
 the result of B<kadmin getprinc>.  A line of 40 dashes separates the first
 from the second if AFS kaserver support is configured.
+
+The C<expiration> function changes the expiration date of a principal.
 
 The C<help> function prints out a summary of supported functions and their
 arguments.
