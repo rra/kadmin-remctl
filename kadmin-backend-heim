@@ -75,10 +75,10 @@ our $LDAPSEARCH = 'ldapsearch';
 #     allowed    => Regex matching all permitted principal names (w/o instance)
 #     checking   => True if we should enable password strength checking
 #     pwcheck    => Program to check password quality (Heimdal protocol)
-#     locked     => Program to check to see if we can enable an account
 #     k5_admin   => Principal for Kerberos v5 kadmin authentication
 #     k5_host    => Admin server for Kerberos v5 kadmin operations
 #     k5_keytab  => Keytab for Kerberos v5 kadmin authentication
+#     locked     => Program to check to see if we can enable an account
 #     reset      => True if we should allow password resets
 #
 # No instances are configured by default.  In order for a particular instance
@@ -1573,13 +1573,6 @@ and so forth).
 Set to a true value if passwords for this instance should be subject to
 password strength checking, false otherwise.
 
-=item locked
-
-Set to an array containing a program (and its required arguments) to use to
-check if an instance is locked.  'Locked' means that the instance cannot be
-enabled again using this interface for some policy reason.  If the array
-is undefined or empty, there is no checking for locked status.
-
 =item k5_admin
 
 Principal to use for authentication of Kerberos v5 B<kadmin> operations.
@@ -1598,6 +1591,13 @@ point B<kadmin-backend> at a different kadmin server.
 =item k5_keytab
 
 Keytab to use for authentication of Kerberos v5 B<kadmin> operations.
+
+=item locked
+
+Set to an array containing a program (and its required arguments) to use
+to check if an instance is locked.  'Locked' means that the instance
+cannot be enabled again using this interface for some policy reason.  If
+the array is undefined or empty, there is no checking for locked status.
 
 =item reset
 
