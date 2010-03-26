@@ -29,11 +29,12 @@
 use strict;
 no strict 'refs';
 
-use Heimdal::Kadm5 qw (KRB5_KDB_REQUIRES_PRE_AUTH KADM5_POLICY_NORMAL_MASK
-                       KRB5_KDB_DISALLOW_ALL_TIX KADM5_POLICY_CLR);
+use Expect ();
+use Date::Parse qw(str2time);
+use Heimdal::Kadm5 qw(KRB5_KDB_REQUIRES_PRE_AUTH KADM5_POLICY_NORMAL_MASK
+                      KRB5_KDB_DISALLOW_ALL_TIX KADM5_POLICY_CLR);
 use POSIX;
 use Time::Seconds;
-use Expect ();
 
 # Disable sending of kadmin's output to our standard output.
 $Expect::Log_Stdout = 0;
@@ -104,6 +105,7 @@ Kerberos administrative remctl help:
   kadmin disable <user>                         Disable <user> account
   kadmin enable <user>                          Enable <user> account
   kadmin examine <user>                         Show information for <user>
+  kadmin expiration <user> <date>               Set expiration for <user>
   kadmin instance check <user> <inst>           Whether <user>/<inst> exists
   kadmin instance create <user> <inst> <pass>   Create <user>/<inst> account
   kadmin instance delete <user> <inst>          Delete <user>/<inst> account
@@ -321,6 +323,37 @@ sub kadmin_enable {
     if ($@) {
 	warn "error: $@\n";
 	exit 1;
+    }
+}
+
+# Change a principal's expiration date using kadmin.
+sub kadmin_expiration {
+    my ($principal, $instance, $expiration) = @_;
+    check_principal ($principal, $instance);
+    kadmiN_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+    my $expires = str2time ($expiration);
+    unless (defined $expires) {
+        warn "error: invalid expiration date $expiration\n";
+        exit 1;
+    }
+
+    my $kadmin = kadmin_handle ($instance);
+    my $data = { $kadmin->getPrincipal ($principal) };
+    if ($@) {
+        warn "error: $@\n";
+        exit 1;
+    } elsif (!defined $data) {
+        warn "error: principal $principal does not exist\n";
+        exit 1;
+    }
+    eval {
+        $data->setPrincExpireTime ($expires);
+        $kadmin->modifyPrincipal ($data);
+    };
+    if ($@) {
+        warn "error: $@\n";
+        exit 1;
     }
 }
 
@@ -1204,6 +1237,13 @@ if ($cmd eq 'change_passwd') {
     ($princ, $inst) = split ('/', $princ);
     examine_principal ($princ, $inst);
 
+} elsif ($cmd eq 'expiration') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $expiration = shift or die "error: missing expiration date\n";
+
+    kadmin_expiration ($princ, '', $expiration);
+
 } elsif ($cmd eq 'help') {
 
     print $HELP;
@@ -1296,6 +1336,8 @@ B<kadmin-backend> create I<user> I<password> (enabled | disabled)
 
 B<kadmin-backend> (delete | disable | enable | examine) I<user>
 
+B<kadmin-backend> expiration I<user> I<date>
+
 B<kadmin-backend> (reset_passwd | reset) I<user> I<password>
 
 B<kadmin-backend> instance check I<user> I<instance>
@@ -1377,6 +1419,9 @@ looking them up there.  The output format for the AFS kaserver is the same
 as the old Kerberos v4 B<kadmin> output, and the output for Kerberos v5 is
 the result of B<kadmin getprinc>.  A line of 40 dashes separates the first
 from the second if AFS kaserver support is configured.
+
+The C<expiration> function changes the expiration date of a principal.
+This is not propagated into an AFS kaserver or into Active Directory.
 
 The C<help> function prints out a summary of supported functions and their
 arguments.
