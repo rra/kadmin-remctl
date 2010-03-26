@@ -1330,6 +1330,7 @@ the result of B<kadmin getprinc>.  A line of 40 dashes separates the first
 from the second if AFS kaserver support is configured.
 
 The C<expiration> function changes the expiration date of a principal.
+This is not propagated into an AFS kaserver or into Active Directory.
 
 The C<help> function prints out a summary of supported functions and their
 arguments.
