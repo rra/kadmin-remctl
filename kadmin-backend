@@ -1525,12 +1525,11 @@ and so forth).
 Set to a true value if passwords for this instance should be subject to
 password strength checking, false otherwise.
 
-=item locked
+=item extra_options
 
-Set to an array containing a program (and its required arguments) to use to 
-check if an instance is locked.  'Locked' means that the instance cannot be 
-enabled again using this interface for some policy reason.  If the array
-is undefined or empty, there is no checking for locked status.
+Contains extra options to pass to the B<kadmin> create command when
+creating a new principal.  These can be any valid flags to the create
+command.
 
 =item k5_admin
 
@@ -1550,6 +1549,13 @@ point B<kadmin-backend> at a different kadmin server.
 =item k5_keytab
 
 Keytab to use for authentication of Kerberos v5 B<kadmin> operations.
+
+=item locked
+
+Set to an array containing a program (and its required arguments) to use
+to check if an instance is locked.  Locked means that the instance cannot
+be enabled again using this interface for some policy reason.  If the
+array is undefined or empty, there is no checking for locked status.
 
 =item reset
 
