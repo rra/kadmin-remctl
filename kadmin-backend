@@ -56,23 +56,24 @@ our $LDAPSEARCH = 'ldapsearch';
 # empty string used for a null instance.  Each value is a hash with the
 # following key/value pairs:
 #
-#     ad_config  => OpenLDAP config file for AD LDAP commands
-#     ad_group   => Group to which to add all accounts
-#     ad_keytab  => Keytab containing credentials for AD authentication
-#     ad_ldif    => Text::Template LDIF file used for AD account changes
-#     ad_realm   => Kerberos realm for Active Directory
-#     ad_setpass => Use ksetpass rather than LDAP for password setting
-#     afs_admin  => Principal for Kerberos v4 kasetkey authentication
-#     afs_fake   => Whether to fake Kerberos v4 kadmin output
-#     afs_srvtab => Srvtab for Kerberos v4 kasetkey authentication
-#     acl        => File listing principals that can manage this instance
-#     allowed    => Regex matching all permitted principal names (w/o instance)
-#     checking   => True if we should enable password strength checking
-#     locked     => Program to check to see if we can enable an account
-#     k5_admin   => Principal for Kerberos v5 kadmin authentication
-#     k5_host    => Admin server for Kerberos v5 kadmin operations
-#     k5_keytab  => Keytab for Kerberos v5 kadmin authentication
-#     reset      => True if we should allow password resets
+#     ad_config   => OpenLDAP config file for AD LDAP commands
+#     ad_group    => Group to which to add all accounts
+#     ad_keytab   => Keytab containing credentials for AD authentication
+#     ad_ldif     => Text::Template LDIF file used for AD account changes
+#     ad_realm    => Kerberos realm for Active Directory
+#     ad_setpass  => Use ksetpass rather than LDAP for password setting
+#     afs_admin   => Principal for Kerberos v4 kasetkey authentication
+#     afs_fake    => Whether to fake Kerberos v4 kadmin output
+#     afs_srvtab  => Srvtab for Kerberos v4 kasetkey authentication
+#     acl         => File listing principals that can manage this instance
+#     allowed     => Regex matching permitted principal names (w/o instance)
+#     checking    => True if we should enable password strength checking
+#     create_opts => Extra options to pass to create
+#     k5_admin    => Principal for Kerberos v5 kadmin authentication
+#     k5_host     => Admin server for Kerberos v5 kadmin operations
+#     k5_keytab   => Keytab for Kerberos v5 kadmin authentication
+#     locked      => Program to check to see if we can enable an account
+#     reset       => True if we should allow password resets
 #
 # No instances are configured by default.  In order for a particular instance
 # (including the empty instance) to be managed by this program, configuration
@@ -267,8 +268,8 @@ sub kadmin_create {
     if ($status ne 'enabled') {
         $command .= ' -allow_tix';
     }
-    if (exists $CONFIG{$instance}{extra_options}) {
-        $command .= ' ' . $CONFIG{$instance}{extra_options};
+    if (exists $CONFIG{$instance}{create_opts}) {
+        $command .= ' ' . $CONFIG{$instance}{create_opts};
     }
     my $k5admin = spawn_k5admin ($instance);
     unless ($k5admin->expect (2, 'kadmin:')) {
@@ -1525,7 +1526,7 @@ and so forth).
 Set to a true value if passwords for this instance should be subject to
 password strength checking, false otherwise.
 
-=item extra_options
+=item create_opts
 
 Contains extra options to pass to the B<kadmin> create command when
 creating a new principal.  These can be any valid flags to the create
