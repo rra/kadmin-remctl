@@ -2,6 +2,13 @@
 
 kadmin-remctl 3.1 (unreleased)
 
+    Add an expiration command, which sets the expiration date of a
+    principal.  Based on a patch from Garrett Wollman.
+
+    For an MIT Kerberos server, add the create_opts configuration
+    parameter, which adds additional options that are passed to kadmin
+    addprinc when a principal is created.
+
     Allow underscores in principal names by default in the examine
     function.
 
