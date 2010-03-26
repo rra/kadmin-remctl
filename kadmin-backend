@@ -68,7 +68,7 @@ our $LDAPSEARCH = 'ldapsearch';
 #     acl         => File listing principals that can manage this instance
 #     allowed     => Regex matching permitted principal names (w/o instance)
 #     checking    => True if we should enable password strength checking
-#     create_opts => Extra options to pass to create
+#     create_opts => Extra options to pass to kadmin addprinc
 #     k5_admin    => Principal for Kerberos v5 kadmin authentication
 #     k5_host     => Admin server for Kerberos v5 kadmin operations
 #     k5_keytab   => Keytab for Kerberos v5 kadmin authentication
@@ -1529,8 +1529,8 @@ password strength checking, false otherwise.
 
 =item create_opts
 
-Contains extra options to pass to the B<kadmin> create command when
-creating a new principal.  These can be any valid flags to the create
+Contains extra options to pass to the B<kadmin> C<addprinc> command when
+creating a new principal.  These can be any valid flags to the C<addprinc>
 command.
 
 =item k5_admin
