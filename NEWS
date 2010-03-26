@@ -1,5 +1,10 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.1 (unreleased)
+
+    Allow underscores in principal names by default in the examine
+    function.
+
 kadmin-remctl 3.0 (2010-02-17)
 
     Add kadmin-backend-heim, which duplicates the kadmin-backend

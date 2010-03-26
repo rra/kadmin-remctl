@@ -1006,9 +1006,9 @@ sub examine_principal {
     }
     my $regex;
     if ($CONFIG{$instance}) {
-        $regex = $CONFIG{$instance}{allowed} || '^[-a-zA-Z0-9]+\z';
+        $regex = $CONFIG{$instance}{allowed} || '^[a-zA-Z0-9_-]+\z';
     } else {
-        $regex = '^[-a-zA-Z0-9]+\z';
+        $regex = '^[a-zA-Z0-9_-]+\z';
     }
     unless ($principal =~ /$regex/ and $instance =~ m%^([a-zA-Z0-9._-]+)?\z%) {
         die "error: invalid character in principal name\n";
