@@ -2,12 +2,20 @@
 
 kadmin-remctl 3.1 (unreleased)
 
+    kadmin-backend for an MIT Kerberos server no longer has the boolean
+    checking configuration parameter, which said whether to do password
+    checking.  Instead, there is a new policy configuration parameter
+    which, if set, sets that password policy for newly created accounts.
+    To duplicate the previous behavior when checking was true, set policy
+    to "standard".
+
     Add an expiration command, which sets the expiration date of a
     principal.  Based on a patch from Garrett Wollman.
 
-    For an MIT Kerberos server, add the create_opts configuration
-    parameter, which adds additional options that are passed to kadmin
-    addprinc when a principal is created.
+    kadmin backend for an MIT Kerberos server now supports the create_opts
+    configuration parameter, which adds additional options that are passed
+    to kadmin addprinc when a principal is created.  Based on a patch by
+    Garrett Wollman.
 
     Allow underscores in principal names by default in the examine
     function.
