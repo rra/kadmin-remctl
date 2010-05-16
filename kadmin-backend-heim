@@ -246,12 +246,6 @@ sub kadmin_create {
     my $princdata = eval { $kadmin->makePrincipal ($principal) };
 
     my $attrs = $princdata->getAttributes;
-    $attrs |= KRB5_KDB_REQUIRES_PRE_AUTH;
-    if ($CONFIG{$instance}{checking}) {
-	$attrs |= KADM5_POLICY_NORMAL_MASK;
-    } else {
-	$attrs |= KADM5_POLICY_CLR;
-    }
     if ($status ne 'enabled') {
 	$attrs |= KRB5_KDB_DISALLOW_ALL_TIX;
     } else {
