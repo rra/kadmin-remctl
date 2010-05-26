@@ -106,6 +106,8 @@ Kerberos administrative remctl help:
   kadmin enable <user>                          Enable <user> account
   kadmin examine <user>                         Show information for <user>
   kadmin expiration <user> <date>               Set expiration for <user>
+  kadmin pwexpiration <user> <date>             Set expiration for <user>
+  kadmin check_expire <user> expire|pwexpire    Get account or pwd expire time
   kadmin instance check <user> <inst>           Whether <user>/<inst> exists
   kadmin instance create <user> <inst> <pass>   Create <user>/<inst> account
   kadmin instance delete <user> <inst>          Delete <user>/<inst> account
@@ -324,7 +326,7 @@ sub kadmin_enable {
 sub kadmin_expiration {
     my ($principal, $instance, $expiration) = @_;
     check_principal ($principal, $instance);
-    kadmiN_config ($instance) or return;
+    kadmin_config ($instance) or return;
     $principal = "$principal/$instance" if $instance;
     my $expires = str2time ($expiration);
     unless (defined $expires) {
@@ -333,7 +335,7 @@ sub kadmin_expiration {
     }
 
     my $kadmin = kadmin_handle ($instance);
-    my $data = { $kadmin->getPrincipal ($principal) };
+    my $data = eval { $kadmin->getPrincipal ($principal) };
     if ($@) {
         warn "error: $@\n";
         exit 1;
@@ -349,6 +351,72 @@ sub kadmin_expiration {
         warn "error: $@\n";
         exit 1;
     }
+}
+
+# Change a principal's password expiration date using kadmin.
+sub kadmin_pwexpiration {
+    my ($principal, $instance, $expiration) = @_;
+    check_principal ($principal, $instance);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+    my $expires = str2time ($expiration);
+    unless (defined $expires) {
+        warn "error: invalid expiration date $expiration\n";
+        exit 1;
+    }
+
+    my $kadmin = kadmin_handle ($instance);
+    my $data = eval { $kadmin->getPrincipal ($principal) };
+    if ($@) {
+        warn "error: $@\n";
+        exit 1;
+    } elsif (!defined $data) {
+        warn "error: principal $principal does not exist\n";
+        exit 1;
+    }
+    eval {
+        $data->setPwExpiration ($expires);
+        $kadmin->modifyPrincipal ($data);
+    };
+    if ($@) {
+        warn "error: $@\n";
+        exit 1;
+    }
+}
+
+# Get a principal's expiration date or password expiration date using kadmin,
+# as a UTC date in the format: YYYY-MM-DD HH:MM:SSZ (with Z a literal Z).
+# Return '' if there is no expiration date set of the requested type.
+sub kadmin_expiration_check {
+    my ($principal, $instance, $type) = @_;
+    $principal = "$principal/$instance" if $instance;
+
+    my $kadmin = kadmin_handle ($instance);
+    my $data = eval { $kadmin->getPrincipal ($principal) };
+    if ($@) {
+        warn "error: $@\n";
+        exit 1;
+    } elsif (!defined $data) {
+        warn "error: principal $principal does not exist\n";
+        exit 1;
+    }
+
+    my $expire = $data->getPrincExpireTime ();
+    my $pwexpire = $data->getPwExpiration ();
+
+    # If no type was requested, return the soonest of the two dates.
+    if (!$type) {
+        $type = 'expire';
+        $type = 'pwexpire' if $pwexpire < $expire;
+    }
+
+    if ($type eq 'pwexpire' && $pwexpire) {
+        return strftime ("%F %TZ", gmtime ($pwexpire));
+    } elsif ($type eq 'expire' && $expire) {
+        return strftime ("%F %TZ", gmtime ($expire));
+    }
+
+    return '';
 }
 
 # Reset a password via kadmin.
@@ -1237,6 +1305,21 @@ if ($cmd eq 'change_passwd') {
     my $expiration = shift or die "error: missing expiration date\n";
 
     kadmin_expiration ($princ, '', $expiration);
+
+} elsif ($cmd eq 'pwexpiration') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $expiration = shift or die "error: missing expiration date\n";
+
+    kadmin_pwexpiration ($princ, '', $expiration);
+
+} elsif ($cmd eq 'check_expire') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $type = shift;
+
+    my $expire = kadmin_expiration_check ($princ, '', $type);
+    print $expire, "\n";
 
 } elsif ($cmd eq 'help') {
 

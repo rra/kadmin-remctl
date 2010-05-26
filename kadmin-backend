@@ -28,6 +28,8 @@
 use strict;
 
 use Expect ();
+use POSIX;
+use Date::Parse;
 
 # Disable sending of kadmin's output to our standard output.
 $Expect::Log_Stdout = 0;
@@ -98,6 +100,9 @@ Kerberos administrative remctl help:
   kadmin disable <user>                         Disable <user> account
   kadmin enable <user>                          Enable <user> account
   kadmin examine <user>                         Show information for <user>
+  kadmin expiration <user> <date>               Set expiration for <user>
+  kadmin pwexpiration <user> <date>             Set expiration for <user>
+  kadmin check_expire <user> expire|pwexpire    Get account or pwd expire time
   kadmin instance check <user> <inst>           Whether <user>/<inst> exists
   kadmin instance create <user> <inst> <pass>   Create <user>/<inst> account
   kadmin instance delete <user> <inst>          Delete <user>/<inst> account
@@ -391,6 +396,67 @@ sub kadmin_expiration {
         print "retstr: $output\n";
         exit 1;
     }
+}
+
+# Change a principal's password expiration date using kadmin.
+sub kadmin_pwexpiration {
+    my ($principal, $instance, $expire) = @_;
+    check_principal ($principal, $instance);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+    my ($status, $output)
+        = run_k5admin ($instance,
+                       "modprinc -pwexpire \"$expire\" $principal");
+    if ($status != 0 || $output =~ /^modify_principal: /) {
+        $output =~ s/^modify_principal: //;
+        $output =~ s/\r?\n.*//;
+        warn "error: $output\n";
+        print "retstr: $output\n";
+        exit 1;
+    }
+}
+
+# Get a principal's expiration date or password expiration date using kadmin,
+# as a UTC date in the format: YYYY-MM-DD HH:MM:SSZ (with Z a literal Z).
+# Return '' if there is no expiration date set of the requested type.
+sub kadmin_expiration_check {
+    my ($principal, $instance, $type) = @_;
+    check_principal ($principal, $instance);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+    my ($status, $output)
+        = run_k5admin ($instance, "getprinc $principal");
+
+    # Parse out the two possible expire times.  We exit if we cannot find
+    # either, not checking to see if it the requested time -- that's
+    # potentially overkill, but does indicate that something's wrong.
+    my ($pwexpire, $expire) = (0, 0);
+    if ($output =~ /Password expiration date: (.*)/) {
+        $pwexpire = str2time ($1) unless $1 eq '[none]';
+    } else {
+        warn "error: could not find password expiration date\n";
+        exit 1;
+    }
+    if ($output =~ /Expiration date: (.*)/) {
+        $expire = str2time ($1) unless $1 eq '[never]';
+    } else {
+        warn "error: could not find expiration date\n";
+        exit 1;
+    }
+
+    # If no type was requested, return the soonest of the two dates.
+    if (!$type) {
+        $type = 'expire';
+        $type = 'pwexpire' if $pwexpire > $expire;
+    }
+
+    if ($type eq 'pwexpire' && $pwexpire > 0) {
+        return strftime ("%F %TZ", gmtime (str2time ($pwexpire)));
+    } elsif ($type eq 'expire' && $expire > 0) {
+        return strftime ("%F %TZ", gmtime (str2time ($expire)));
+    }
+
+    return '';
 }
 
 # The K5 kadmin interface doesn't support checking the strength of a password
@@ -1144,6 +1210,21 @@ if ($cmd eq 'change_passwd') {
     my $expiration = shift or die "error: missing expiration date\n";
 
     kadmin_expiration ($princ, '', $expiration);
+
+} elsif ($cmd eq 'pwexpiration') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $expiration = shift or die "error: missing expiration date\n";
+
+    kadmin_pwexpiration ($princ, '', $expiration);
+
+} elsif ($cmd eq 'check_expire') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $type = shift;
+
+    my $expire = kadmin_expiration_check ($princ, '', $type);
+    print $expire, "\n";
 
 } elsif ($cmd eq 'examine') {
 
