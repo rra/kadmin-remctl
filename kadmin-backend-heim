@@ -328,10 +328,18 @@ sub kadmin_expiration {
     check_principal ($principal, $instance);
     kadmin_config ($instance) or return;
     $principal = "$principal/$instance" if $instance;
-    my $expires = str2time ($expiration);
-    unless (defined $expires) {
-        warn "error: invalid expiration date $expiration\n";
-        exit 1;
+
+    # Accept either anything that str2time can handle, or 'never' as a
+    # special case the KDC understands.
+    my $expires;
+    if ($expiration eq 'never') {
+        $expires = $expiration;
+    } else {
+        $expires = str2time ($expiration);
+        unless (defined $expires) {
+            warn "error: invalid expiration date $expiration\n";
+            exit 1;
+        }
     }
 
     my $kadmin = kadmin_handle ($instance);
@@ -359,10 +367,18 @@ sub kadmin_pwexpiration {
     check_principal ($principal, $instance);
     kadmin_config ($instance) or return;
     $principal = "$principal/$instance" if $instance;
-    my $expires = str2time ($expiration);
-    unless (defined $expires) {
-        warn "error: invalid expiration date $expiration\n";
-        exit 1;
+
+    # Accept either anything that str2time can handle, or 'never' as a
+    # special case the KDC understands.
+    my $expires;
+    if ($expiration eq 'never') {
+        $expires = $expiration;
+    } else {
+        $expires = str2time ($expiration);
+        unless (defined $expires) {
+            warn "error: invalid expiration date $expiration\n";
+            exit 1;
+        }
     }
 
     my $kadmin = kadmin_handle ($instance);
