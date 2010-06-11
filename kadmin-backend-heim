@@ -407,7 +407,7 @@ sub kadmin_expiration_check {
     # If no type was requested, return the soonest of the two dates.
     if (!$type) {
         $type = 'expire';
-        $type = 'pwexpire' if $pwexpire < $expire;
+        $type = 'pwexpire' if $pwexpire < $expire || $expire == 0;
     }
 
     if ($type eq 'pwexpire' && $pwexpire) {
