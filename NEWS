@@ -22,6 +22,12 @@ kadmin-remctl 3.1 (unreleased)
     Add an expiration command, which sets the expiration date of a
     principal.  Based on a patch from Garrett Wollman.
 
+    Add a pwexpiration command, which sets the expiration date of the
+    password of a principal.
+
+    Add a check_expire command, which returns the expiration date of
+    either a principal or a password.
+
     kadmin backend for an MIT Kerberos server now supports the create_opts
     configuration parameter, which adds additional options that are passed
     to kadmin addprinc when a principal is created.  Based on a patch by
