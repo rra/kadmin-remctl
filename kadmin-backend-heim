@@ -427,9 +427,9 @@ sub kadmin_expiration_check {
     }
 
     if ($type eq 'pwexpire' && $pwexpire) {
-        return strftime ("%F %TZ", gmtime ($pwexpire));
+        return strftime ("%Y-%m-%d %TZ", gmtime ($pwexpire));
     } elsif ($type eq 'expire' && $expire) {
-        return strftime ("%F %TZ", gmtime ($expire));
+        return strftime ("%Y-%m-%d %TZ", gmtime ($expire));
     }
 
     return '';
