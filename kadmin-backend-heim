@@ -99,6 +99,7 @@ if (-r "/etc/kadmin-remctl.conf") {
 our $HELP = <<'EOH';
 Kerberos administrative remctl help:
   kadmin change_passwd <user> <old> <new>       Change password for <user>
+  kadmin check_expire <user> expire|pwexpire    Get account or pwd expire time
   kadmin check_passwd <user> <password>         Check strength of password
   kadmin create <user> <pass> enabled|disabled  Create <user> account
   kadmin delete <user>                          Delete <user> account
@@ -106,13 +107,12 @@ Kerberos administrative remctl help:
   kadmin enable <user>                          Enable <user> account
   kadmin examine <user>                         Show information for <user>
   kadmin expiration <user> <date>               Set expiration for <user>
-  kadmin pwexpiration <user> <date>             Set expiration for <user>
-  kadmin check_expire <user> expire|pwexpire    Get account or pwd expire time
   kadmin instance check <user> <inst>           Whether <user>/<inst> exists
   kadmin instance create <user> <inst> <pass>   Create <user>/<inst> account
   kadmin instance delete <user> <inst>          Delete <user>/<inst> account
   kadmin instance list <inst>                   List all */<inst> accounts
   kadmin instance reset <user> <inst> <pass>    Set password for <user>/<inst>
+  kadmin pwexpiration <user> <date>             Set expiration for <user>
   kadmin reset_passwd <user> <password>         Change password for <user>
 EOH
 
@@ -1423,6 +1423,8 @@ kadmin-backend - remctl interface to kadmin functionality
 
 B<kadmin-backend> change_passwd I<user> I<old> I<new>
 
+B<kadmin-backend> check_expire I<user> (expire | pwexpire)
+
 B<kadmin-backend> check_passwd I<user> I<password>
 
 B<kadmin-backend> create I<user> I<password> (enabled | disabled)
@@ -1430,6 +1432,8 @@ B<kadmin-backend> create I<user> I<password> (enabled | disabled)
 B<kadmin-backend> (delete | disable | enable | examine) I<user>
 
 B<kadmin-backend> expiration I<user> I<date>
+
+B<kadmin-backend> pwexpiration I<user> I<date>
 
 B<kadmin-backend> (reset_passwd | reset) I<user> I<password>
 
@@ -1478,6 +1482,12 @@ The C<change_passwd> function changes a user's password given the current
 password.  It is equivalent to B<kpasswd> but only works on the restricted
 set of users as described above.
 
+The C<check_expire> function returns the expiration time for either the
+account (when given the C<expire> argument) or the password (when given
+the C<pwexpire> argument) in ISO 8601 format (YYYY-MM-DD HH:MM:SSZ).  The
+time is always in the UTC time zone.  If the account or password does not
+expire, the output will be empty.
+
 The C<check_passwd> function performs strength checking against the given
 password without changing the password.  I<user> is required for backward
 compatibility but is ignored.  This function will exit successfully (exit
@@ -1514,10 +1524,20 @@ the result of B<kadmin getprinc>.  A line of 40 dashes separates the first
 from the second if AFS kaserver support is configured.
 
 The C<expiration> function changes the expiration date of a principal.
-This is not propagated into an AFS kaserver or into Active Directory.
+This is not propagated into an AFS kaserver or into Active Directory.  The
+expiration date may be either C<never> or something that can be parsed by
+the date parsing routines.  Using the YYYY-MM-DD HH:MM:SS format is
+recommended.
 
 The C<help> function prints out a summary of supported functions and their
 arguments.
+
+The C<pwexpiration> function changes the expiration date of a principal's
+password.  Unlike an account expiration, this expiration date will be
+pushed forward when the user changes their password.  This is not
+propagated into an AFS kaserver or into Active Directory.  The expiration
+date may be either C<never> or something that can be parsed by the date
+parsing routines.  Using the YYYY-MM-DD HH:MM:SS format is recommended.
 
 The C<reset_passwd> function changes the password for a given principal
 without requiring knowledge of the old password.  Changing the password of
