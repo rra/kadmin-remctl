@@ -1222,6 +1222,9 @@ if ($cmd eq 'change_passwd') {
 
     my $princ = shift or die "error: missing principal\n";
     my $type = shift;
+    if ($type and ($type ne 'expire' and $type ne 'pwexpire')) {
+        die "error: invalid expiration type: $type\n";
+    }
 
     my $expire = kadmin_expiration_check ($princ, '', $type);
     print $expire, "\n";
