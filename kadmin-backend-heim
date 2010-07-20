@@ -1423,7 +1423,7 @@ kadmin-backend - remctl interface to kadmin functionality
 
 B<kadmin-backend> change_passwd I<user> I<old> I<new>
 
-B<kadmin-backend> check_expire I<user> (expire | pwexpire)
+B<kadmin-backend> check_expire I<user> [expire | pwexpire]
 
 B<kadmin-backend> check_passwd I<user> I<password>
 
@@ -1431,9 +1431,9 @@ B<kadmin-backend> create I<user> I<password> (enabled | disabled)
 
 B<kadmin-backend> (delete | disable | enable | examine) I<user>
 
-B<kadmin-backend> expiration I<user> I<date>
+B<kadmin-backend> expiration I<user> (I<date> | now | never)
 
-B<kadmin-backend> pwexpiration I<user> I<date>
+B<kadmin-backend> pwexpiration I<user> (I<date> | now | never)
 
 B<kadmin-backend> (reset_passwd | reset) I<user> I<password>
 
@@ -1484,7 +1484,8 @@ set of users as described above.
 
 The C<check_expire> function returns the expiration time for either the
 account (when given the C<expire> argument) or the password (when given
-the C<pwexpire> argument) in ISO 8601 format (YYYY-MM-DD HH:MM:SSZ).  The
+the C<pwexpire> argument) in ISO 8601 format (YYYY-MM-DD HH:MM:SSZ).  If
+neither argument is given, the nearest expiration date is displayed.  The
 time is always in the UTC time zone.  If the account or password does not
 expire, the output will be empty.
 
@@ -1525,8 +1526,8 @@ from the second if AFS kaserver support is configured.
 
 The C<expiration> function changes the expiration date of a principal.
 This is not propagated into an AFS kaserver or into Active Directory.  The
-expiration date may be either C<never> or something that can be parsed by
-the date parsing routines.  Using the YYYY-MM-DD HH:MM:SS format is
+expiration date may be C<now>, C<never>, or something that can be parsed
+by the date parsing routines.  Using the YYYY-MM-DD HH:MM:SS format is
 recommended.
 
 The C<help> function prints out a summary of supported functions and their
@@ -1536,7 +1537,7 @@ The C<pwexpiration> function changes the expiration date of a principal's
 password.  Unlike an account expiration, this expiration date will be
 pushed forward when the user changes their password.  This is not
 propagated into an AFS kaserver or into Active Directory.  The expiration
-date may be either C<never> or something that can be parsed by the date
+date may be C<now>, C<never>, or something that can be parsed by the date
 parsing routines.  Using the YYYY-MM-DD HH:MM:SS format is recommended.
 
 The C<reset_passwd> function changes the password for a given principal
