@@ -6,7 +6,7 @@ autoreconf -i
 rm -rf autom4te.cache
 
 # Generate manual pages.
-version=`grep '^kstart' NEWS | head -1 | cut -d' ' -f2`
+version=`grep '^kadmin-remctl' NEWS | head -1 | cut -d' ' -f2`
 pod2man --release="$version" --center="kadmin-remctl" ksetpass.pod \
     > ksetpass.1
 pod2man --release="$version" --center="kadmin-remctl" passwd_change.pod \
