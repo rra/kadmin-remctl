@@ -8,6 +8,8 @@
 
 kadmin change_passwd /usr/sbin/kadmin-backend logmask=3,4 \
     ANYUSER
+kadmin check_expire  /usr/sbin/kadmin-backend \
+    /etc/remctl/acl/kadmin-check-expire /etc/remctl/acl/kadmin-examine
 kadmin check_passwd  /usr/sbin/kadmin-backend logmask=3 \
     /etc/remctl/acl/kadmin-examine /etc/remctl/acl/operations
 kadmin create        /usr/sbin/kadmin-backend logmask=3 \
@@ -22,9 +24,13 @@ kadmin examine       /usr/sbin/kadmin-backend \
     /etc/remctl/acl/kadmin-examine /etc/remctl/acl/operations \
     /etc/remctl/acl/security /etc/remctl/acl/data-admin \
     /etc/remctl/acl/data-view 
+kadmin expiration    /usr/sbin/kadmin-backend \
+    /etc/remctl/acl/kadmin-expiration
 kadmin help          /usr/sbin/kadmin-backend \
     ANYUSER
 kadmin instance      /usr/sbin/kadmin-backend logmask=5 \
     /etc/remctl/acl/kadmin-instance
+kadmin pwexpiration  /usr/sbin/kadmin-backend \
+    /etc/remctl/acl/kadmin-expiration
 kadmin reset_passwd  /usr/sbin/kadmin-backend logmask=3 \
     /etc/remctl/acl/kadmin-reset

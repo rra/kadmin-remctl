@@ -7,7 +7,7 @@ dnl
 dnl See LICENSE for licensing terms.
 
 AC_PREREQ([2.64])
-AC_INIT([kadmin-remctl], [3.0], [rra@stanford.edu])
+AC_INIT([kadmin-remctl], [3.1], [rra@stanford.edu])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_LIBOBJ_DIR([portable])
 AC_CONFIG_MACRO_DIR([m4])
@@ -24,8 +24,7 @@ RRA_LIB_REMCTL
 RRA_LIB_KRB5
 RRA_LIB_KRB5_SWITCH
 AC_CHECK_FUNCS([krb5_get_init_creds_opt_alloc \
-    krb5_get_init_creds_opt_set_default_flags \
-    krb5_principal_get_realm])
+    krb5_get_init_creds_opt_set_default_flags])
 RRA_LIB_KRB5_RESTORE
 
 AC_HEADER_STDBOOL

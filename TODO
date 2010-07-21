@@ -34,6 +34,9 @@ kadmin:
  * Look at using IPC::Run for the communication to programs instead of
    rolling our own.
 
+ * Add a way to set the password expiration time as well as the principal
+   expiration time.
+
 Active Directory:
 
  * kadmin-remctl should use Net::LDAP or Net::LDAPapi rather than calling
