@@ -2,6 +2,7 @@ Source: kadmin-remctl
 Section: net
 Priority: extra
 Maintainer: Russ Allbery <rra@debian.org>
+Bugs: mailto:rra@debian.org
 Build-Depends: debhelper (>= 7.0.50~), libkrb5-dev, libremctl-dev
 Standards-Version: 3.9.0
 Homepage: http://www.eyrie.org/~eagle/software/kadmin-remctl/
