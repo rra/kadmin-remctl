@@ -36,6 +36,12 @@ kadmin-remctl 3.1 (unreleased)
     Allow underscores in principal names by default in the examine
     function.
 
+    Update to rra-c-util 2.5:
+
+    * Restore default settings after probing for GSS-API libraries.
+    * Support the *BSD build of Heimdal in the Kerberos probes.
+    * Fix krb5_free_error_message replacement for older Kerberos libraries.
+
 kadmin-remctl 3.0 (2010-02-17)
 
     Add kadmin-backend-heim, which duplicates the kadmin-backend

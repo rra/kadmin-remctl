@@ -23,7 +23,13 @@
 #ifndef PORTABLE_KRB5_H
 #define PORTABLE_KRB5_H 1
 
-#include <config.h>
+/*
+ * Allow inclusion of config.h to be skipped, since sometimes we have to use a
+ * stripped-down version of config.h with a different name.
+ */
+#ifndef CONFIG_H_INCLUDED
+# include <config.h>
+#endif
 #include <portable/macros.h>
 
 #include <krb5.h>
@@ -61,15 +67,6 @@ krb5_error_code krb5_get_init_creds_opt_alloc(krb5_context,
 /* Heimdal-specific. */
 #ifndef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_DEFAULT_FLAGS
 #define krb5_get_init_creds_opt_set_default_flags(c, p, r, o) /* empty */
-#endif
-
-/*
- * Heimdal provides a nice function that just returns a const char *.  On MIT,
- * there's an accessor macro that returns the krb5_data pointer, wihch
- * requires more work to get at the underlying char *.
- */
-#ifndef HAVE_KRB5_PRINCIPAL_GET_REALM
-const char *krb5_principal_get_realm(krb5_context, krb5_const_principal);
 #endif
 
 /* Undo default visibility change. */
