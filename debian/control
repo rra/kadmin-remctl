@@ -3,7 +3,7 @@ Section: net
 Priority: extra
 Maintainer: Russ Allbery <rra@debian.org>
 Build-Depends: debhelper (>= 7.0.50~), libkrb5-dev, libremctl-dev
-Standards-Version: 3.8.4
+Standards-Version: 3.9.0
 Homepage: http://www.eyrie.org/~eagle/software/kadmin-remctl/
 Vcs-Git: git://git.eyrie.org/kerberos/kadmin-remctl.git
 Vcs-Browser: http://git.eyrie.org/?p=kerberos/kadmin-remctl.git
