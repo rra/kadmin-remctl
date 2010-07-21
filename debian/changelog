@@ -13,6 +13,10 @@ kadmin-remctl (3.1-1) UNRELEASED; urgency=low
     - The MIT backend now supports a create_opts configuration parameter
       that defines additional options to pass to kadmin addprinc.
     - Allow underscores in principal names in examine.
+  * Switch to 3.0 (quilt) source format.  Force a single Debian patch and
+    include a custom patch header explaining that it is a rollup of any
+    fixes cherry-picked from upstream and breaking those patches out
+    separately would be work for no gain.
   * Update standards version to 3.9.0 (no changes required).
 
  -- Russ Allbery <rra@debian.org>  Wed, 21 Jul 2010 14:50:54 -0700
