@@ -1,4 +1,4 @@
-kadmin-remctl (3.1-1) UNRELEASED; urgency=low
+kadmin-remctl (3.1-1) unstable; urgency=low
 
   * New upstream release.
     - Fix default principal attributes during creation with Heimdal.
@@ -20,7 +20,7 @@ kadmin-remctl (3.1-1) UNRELEASED; urgency=low
   * Set a Bugs header directing bug reports to me personally.
   * Update standards version to 3.9.0 (no changes required).
 
- -- Russ Allbery <rra@debian.org>  Wed, 21 Jul 2010 14:50:54 -0700
+ -- Russ Allbery <rra@debian.org>  Wed, 21 Jul 2010 14:55:59 -0700
 
 kadmin-remctl (3.0-1) unstable; urgency=low
 
