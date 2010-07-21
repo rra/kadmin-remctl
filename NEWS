@@ -1,5 +1,47 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.1 (2010-07-21)
+
+    In the Heimdal backend, don't set KADM5_POLICY_NORMAL_MASK or
+    KADM5_POLICY_CLR as attributes when creating a new principal.  These
+    are not valid attribute values and end up setting or clearing large
+    numbers of other attributes.
+
+    In the Heimdal backend, don't unconditionally set the preauth required
+    attribute on newly created principals.  This should be handled using
+    the "default" principal in Heimdal to configure the desired default
+    principal lifetime and attributes.
+
+    kadmin-backend for an MIT Kerberos server no longer has the boolean
+    checking configuration parameter, which said whether to do password
+    checking.  Instead, there is a new policy configuration parameter
+    which, if set, sets that password policy for newly created accounts.
+    To duplicate the previous behavior when checking was true, set policy
+    to "standard".
+
+    Add an expiration command, which sets the expiration date of a
+    principal.  Based on a patch from Garrett Wollman.
+
+    Add a pwexpiration command, which sets the expiration date of the
+    password of a principal.
+
+    Add a check_expire command, which returns the expiration date of
+    either a principal or a password.
+
+    kadmin backend for an MIT Kerberos server now supports the create_opts
+    configuration parameter, which adds additional options that are passed
+    to kadmin addprinc when a principal is created.  Based on a patch by
+    Garrett Wollman.
+
+    Allow underscores in principal names by default in the examine
+    function.
+
+    Update to rra-c-util 2.5:
+
+    * Restore default settings after probing for GSS-API libraries.
+    * Support the *BSD build of Heimdal in the Kerberos probes.
+    * Fix krb5_free_error_message replacement for older Kerberos libraries.
+
 kadmin-remctl 3.0 (2010-02-17)
 
     Add kadmin-backend-heim, which duplicates the kadmin-backend

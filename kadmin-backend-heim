@@ -29,11 +29,12 @@
 use strict;
 no strict 'refs';
 
-use Heimdal::Kadm5 qw (KRB5_KDB_REQUIRES_PRE_AUTH KADM5_POLICY_NORMAL_MASK
-                       KRB5_KDB_DISALLOW_ALL_TIX KADM5_POLICY_CLR);
+use Expect ();
+use Date::Parse qw(str2time);
+use Heimdal::Kadm5 qw(KRB5_KDB_REQUIRES_PRE_AUTH KADM5_POLICY_NORMAL_MASK
+                      KRB5_KDB_DISALLOW_ALL_TIX KADM5_POLICY_CLR);
 use POSIX;
 use Time::Seconds;
-use Expect ();
 
 # Disable sending of kadmin's output to our standard output.
 $Expect::Log_Stdout = 0;
@@ -75,10 +76,10 @@ our $LDAPSEARCH = 'ldapsearch';
 #     allowed    => Regex matching all permitted principal names (w/o instance)
 #     checking   => True if we should enable password strength checking
 #     pwcheck    => Program to check password quality (Heimdal protocol)
-#     locked     => Program to check to see if we can enable an account
 #     k5_admin   => Principal for Kerberos v5 kadmin authentication
 #     k5_host    => Admin server for Kerberos v5 kadmin operations
 #     k5_keytab  => Keytab for Kerberos v5 kadmin authentication
+#     locked     => Program to check to see if we can enable an account
 #     reset      => True if we should allow password resets
 #
 # No instances are configured by default.  In order for a particular instance
@@ -98,17 +99,20 @@ if (-r "/etc/kadmin-remctl.conf") {
 our $HELP = <<'EOH';
 Kerberos administrative remctl help:
   kadmin change_passwd <user> <old> <new>       Change password for <user>
+  kadmin check_expire <user> expire|pwexpire    Get account or pwd expire time
   kadmin check_passwd <user> <password>         Check strength of password
   kadmin create <user> <pass> enabled|disabled  Create <user> account
   kadmin delete <user>                          Delete <user> account
   kadmin disable <user>                         Disable <user> account
   kadmin enable <user>                          Enable <user> account
   kadmin examine <user>                         Show information for <user>
+  kadmin expiration <user> <date>               Set expiration for <user>
   kadmin instance check <user> <inst>           Whether <user>/<inst> exists
   kadmin instance create <user> <inst> <pass>   Create <user>/<inst> account
   kadmin instance delete <user> <inst>          Delete <user>/<inst> account
   kadmin instance list <inst>                   List all */<inst> accounts
   kadmin instance reset <user> <inst> <pass>    Set password for <user>/<inst>
+  kadmin pwexpiration <user> <date>             Set expiration for <user>
   kadmin reset_passwd <user> <password>         Change password for <user>
 EOH
 
@@ -244,12 +248,6 @@ sub kadmin_create {
     my $princdata = eval { $kadmin->makePrincipal ($principal) };
 
     my $attrs = $princdata->getAttributes;
-    $attrs |= KRB5_KDB_REQUIRES_PRE_AUTH;
-    if ($CONFIG{$instance}{checking}) {
-	$attrs |= KADM5_POLICY_NORMAL_MASK;
-    } else {
-	$attrs |= KADM5_POLICY_CLR;
-    }
     if ($status ne 'enabled') {
 	$attrs |= KRB5_KDB_DISALLOW_ALL_TIX;
     } else {
@@ -322,6 +320,119 @@ sub kadmin_enable {
 	warn "error: $@\n";
 	exit 1;
     }
+}
+
+# Change a principal's expiration date using kadmin.
+sub kadmin_expiration {
+    my ($principal, $instance, $expiration) = @_;
+    check_principal ($principal, $instance);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+
+    # Accept either anything that str2time can handle, or 'never' as a
+    # special case the KDC understands.
+    my $expires;
+    if ($expiration eq 'never') {
+        $expires = $expiration;
+    } else {
+        $expires = str2time ($expiration);
+        unless (defined $expires) {
+            warn "error: invalid expiration date $expiration\n";
+            exit 1;
+        }
+    }
+
+    my $kadmin = kadmin_handle ($instance);
+    my $data = eval { $kadmin->getPrincipal ($principal) };
+    if ($@) {
+        warn "error: $@\n";
+        exit 1;
+    } elsif (!defined $data) {
+        warn "error: principal $principal does not exist\n";
+        exit 1;
+    }
+    eval {
+        $data->setPrincExpireTime ($expires);
+        $kadmin->modifyPrincipal ($data);
+    };
+    if ($@) {
+        warn "error: $@\n";
+        exit 1;
+    }
+}
+
+# Change a principal's password expiration date using kadmin.
+sub kadmin_pwexpiration {
+    my ($principal, $instance, $expiration) = @_;
+    check_principal ($principal, $instance);
+    kadmin_config ($instance) or return;
+    $principal = "$principal/$instance" if $instance;
+
+    # Accept either anything that str2time can handle, or 'never' as a
+    # special case the KDC understands.
+    my $expires;
+    if ($expiration eq 'never') {
+        $expires = $expiration;
+    } else {
+        $expires = str2time ($expiration);
+        unless (defined $expires) {
+            warn "error: invalid expiration date $expiration\n";
+            exit 1;
+        }
+    }
+
+    my $kadmin = kadmin_handle ($instance);
+    my $data = eval { $kadmin->getPrincipal ($principal) };
+    if ($@) {
+        warn "error: $@\n";
+        exit 1;
+    } elsif (!defined $data) {
+        warn "error: principal $principal does not exist\n";
+        exit 1;
+    }
+    eval {
+        $data->setPwExpiration ($expires);
+        $kadmin->modifyPrincipal ($data);
+    };
+    if ($@) {
+        warn "error: $@\n";
+        exit 1;
+    }
+}
+
+# Get a principal's expiration date or password expiration date using kadmin,
+# as a UTC date in the format: YYYY-MM-DD HH:MM:SSZ (with Z a literal Z).
+# Return '' if there is no expiration date set of the requested type.
+sub kadmin_expiration_check {
+    my ($principal, $instance, $type) = @_;
+    $principal = "$principal/$instance" if $instance;
+
+    my $kadmin = kadmin_handle ($instance);
+    my $data = eval { $kadmin->getPrincipal ($principal) };
+    if ($@) {
+        warn "error: $@\n";
+        exit 1;
+    } elsif (!defined $data) {
+        warn "error: principal $principal does not exist\n";
+        exit 1;
+    }
+
+    my $expire = $data->getPrincExpireTime ();
+    my $pwexpire = $data->getPwExpiration ();
+
+    # If no type was requested, return the soonest of the two dates.
+    if (!$type) {
+        $type = 'expire';
+        $type = 'pwexpire' if $pwexpire < $expire || $expire == 0;
+    }
+
+    if ($type eq 'pwexpire' && $pwexpire) {
+        return strftime ("%Y-%m-%d %TZ", gmtime ($pwexpire));
+    } elsif ($type eq 'expire' && $expire) {
+        return strftime ("%Y-%m-%d %TZ", gmtime ($expire));
+    }
+
+    return '';
 }
 
 # Reset a password via kadmin.
@@ -1036,9 +1147,9 @@ sub examine_principal {
     }
     my $regex;
     if ($CONFIG{$instance}) {
-        $regex = $CONFIG{$instance}{allowed} || '^[-a-zA-Z0-9]+\z';
+        $regex = $CONFIG{$instance}{allowed} || '^[a-zA-Z0-9_-]+\z';
     } else {
-        $regex = '^[-a-zA-Z0-9]+\z';
+        $regex = '^[a-zA-Z0-9_-]+\z';
     }
     unless ($principal =~ /$regex/ and $instance =~ m%^([a-zA-Z0-9._-]+)?\z%) {
         die "error: invalid character in principal name\n";
@@ -1204,6 +1315,31 @@ if ($cmd eq 'change_passwd') {
     ($princ, $inst) = split ('/', $princ);
     examine_principal ($princ, $inst);
 
+} elsif ($cmd eq 'expiration') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $expiration = shift or die "error: missing expiration date\n";
+
+    kadmin_expiration ($princ, '', $expiration);
+
+} elsif ($cmd eq 'pwexpiration') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $expiration = shift or die "error: missing expiration date\n";
+
+    kadmin_pwexpiration ($princ, '', $expiration);
+
+} elsif ($cmd eq 'check_expire') {
+
+    my $princ = shift or die "error: missing principal\n";
+    my $type = shift;
+    if ($type and ($type ne 'expire' and $type ne 'pwexpire')) {
+        die "error: invalid expiration type: $type\n";
+    }
+
+    my $expire = kadmin_expiration_check ($princ, '', $type);
+    print $expire, "\n";
+
 } elsif ($cmd eq 'help') {
 
     print $HELP;
@@ -1290,11 +1426,17 @@ kadmin-backend - remctl interface to kadmin functionality
 
 B<kadmin-backend> change_passwd I<user> I<old> I<new>
 
+B<kadmin-backend> check_expire I<user> [expire | pwexpire]
+
 B<kadmin-backend> check_passwd I<user> I<password>
 
 B<kadmin-backend> create I<user> I<password> (enabled | disabled)
 
 B<kadmin-backend> (delete | disable | enable | examine) I<user>
+
+B<kadmin-backend> expiration I<user> (I<date> | now | never)
+
+B<kadmin-backend> pwexpiration I<user> (I<date> | now | never)
 
 B<kadmin-backend> (reset_passwd | reset) I<user> I<password>
 
@@ -1343,6 +1485,13 @@ The C<change_passwd> function changes a user's password given the current
 password.  It is equivalent to B<kpasswd> but only works on the restricted
 set of users as described above.
 
+The C<check_expire> function returns the expiration time for either the
+account (when given the C<expire> argument) or the password (when given
+the C<pwexpire> argument) in ISO 8601 format (YYYY-MM-DD HH:MM:SSZ).  If
+neither argument is given, the nearest expiration date is displayed.  The
+time is always in the UTC time zone.  If the account or password does not
+expire, the output will be empty.
+
 The C<check_passwd> function performs strength checking against the given
 password without changing the password.  I<user> is required for backward
 compatibility but is ignored.  This function will exit successfully (exit
@@ -1378,8 +1527,21 @@ as the old Kerberos v4 B<kadmin> output, and the output for Kerberos v5 is
 the result of B<kadmin getprinc>.  A line of 40 dashes separates the first
 from the second if AFS kaserver support is configured.
 
+The C<expiration> function changes the expiration date of a principal.
+This is not propagated into an AFS kaserver or into Active Directory.  The
+expiration date may be C<now>, C<never>, or something that can be parsed
+by the date parsing routines.  Using the YYYY-MM-DD HH:MM:SS format is
+recommended.
+
 The C<help> function prints out a summary of supported functions and their
 arguments.
+
+The C<pwexpiration> function changes the expiration date of a principal's
+password.  Unlike an account expiration, this expiration date will be
+pushed forward when the user changes their password.  This is not
+propagated into an AFS kaserver or into Active Directory.  The expiration
+date may be C<now>, C<never>, or something that can be parsed by the date
+parsing routines.  Using the YYYY-MM-DD HH:MM:SS format is recommended.
 
 The C<reset_passwd> function changes the password for a given principal
 without requiring knowledge of the old password.  Changing the password of
@@ -1573,13 +1735,6 @@ and so forth).
 Set to a true value if passwords for this instance should be subject to
 password strength checking, false otherwise.
 
-=item locked
-
-Set to an array containing a program (and its required arguments) to use to
-check if an instance is locked.  'Locked' means that the instance cannot be
-enabled again using this interface for some policy reason.  If the array
-is undefined or empty, there is no checking for locked status.
-
 =item k5_admin
 
 Principal to use for authentication of Kerberos v5 B<kadmin> operations.
@@ -1598,6 +1753,13 @@ point B<kadmin-backend> at a different kadmin server.
 =item k5_keytab
 
 Keytab to use for authentication of Kerberos v5 B<kadmin> operations.
+
+=item locked
+
+Set to an array containing a program (and its required arguments) to use
+to check if an instance is locked.  'Locked' means that the instance
+cannot be enabled again using this interface for some policy reason.  If
+the array is undefined or empty, there is no checking for locked status.
 
 =item reset
 
