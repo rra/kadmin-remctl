@@ -1,3 +1,21 @@
+kadmin-remctl (3.1-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+    - Fix default principal attributes during creation with Heimdal.
+    - Don't unconditionally set preauth during creation with Heimdal.
+    - Remove boolean checking parameter for MIT.  Instead, add a new
+      configuration parameter that sets the password policy to use for
+      newly created accounts.
+    - Add expiration and pwexpiration commands to set the expiration and
+      password expiration of accounts.
+    - Add check_expire command which returns the expiration date of an
+      account or its password.
+    - The MIT backend now supports a create_opts configuration parameter
+      that defines additional options to pass to kadmin addprinc.
+    - Allow underscores in principal names in examine.
+
+ -- Russ Allbery <rra@debian.org>  Wed, 21 Jul 2010 14:50:54 -0700
+
 kadmin-remctl (3.0-1) unstable; urgency=low
 
   * New upstream release.
