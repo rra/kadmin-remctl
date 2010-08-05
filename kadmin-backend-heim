@@ -247,13 +247,14 @@ sub kadmin_create {
     my $kadmin = kadmin_handle ($instance);
     my $princdata = eval { $kadmin->makePrincipal ($principal) };
 
-    my $attrs = $princdata->getAttributes;
+    # We'd like to use the default attributes, but that unfortunately doesn't
+    # seem to work to try loading them before the principal is actually
+    # created.  Instead, load a default here.
     if ($status ne 'enabled') {
+        my $attrs = KRB5_KDB_REQUIRES_PRE_AUTH;
 	$attrs |= KRB5_KDB_DISALLOW_ALL_TIX;
-    } else {
-	$attrs &= (~KRB5_KDB_DISALLOW_ALL_TIX);
+        $princdata->setAttributes ($attrs);
     }
-    $princdata->setAttributes ($attrs);
 
     eval { $kadmin->createPrincipal ($princdata, $password, 0) };
 }
