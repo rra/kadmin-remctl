@@ -217,7 +217,7 @@ sub kadmin_handle {
         Principal   => $CONFIG{$instance}{k5_admin},
         Keytab      => $CONFIG{$instance}{k5_keytab},
         RaiseErrors => 1,
-        );
+    );
     $CONFIG{$instance}{handle} = $kadmin;
     return $kadmin;
 }
