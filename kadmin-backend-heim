@@ -214,10 +214,10 @@ sub kadmin_handle {
     return $CONFIG{$instance}{handle} if exists $CONFIG{$instance}{handle};
 
     my $kadmin =  Heimdal::Kadm5::Client->new(
-	Principal   => $CONFIG{$instance}{k5_admin},
-	Keytab      => $CONFIG{$instance}{k5_keytab},
-	RaiseErrors => 1,
-	);
+        Principal   => $CONFIG{$instance}{k5_admin},
+        Keytab      => $CONFIG{$instance}{k5_keytab},
+        RaiseErrors => 1,
+        );
     $CONFIG{$instance}{handle} = $kadmin;
     return $kadmin;
 }
@@ -252,7 +252,7 @@ sub kadmin_create {
     # created.  Instead, load a default here.
     if ($status ne 'enabled') {
         my $attrs = KRB5_KDB_REQUIRES_PRE_AUTH;
-	$attrs |= KRB5_KDB_DISALLOW_ALL_TIX;
+        $attrs |= KRB5_KDB_DISALLOW_ALL_TIX;
         $princdata->setAttributes ($attrs);
     }
 
@@ -269,8 +269,8 @@ sub kadmin_delete {
     my $kadmin = kadmin_handle ($instance);
     my $retval = eval { $kadmin->deletePrincipal ($principal) };
     if ($@) {
-	warn "error deleting $principal: $@";
-	exit 1;
+        warn "error deleting $principal: $@";
+        exit 1;
     }
 }
 
@@ -295,8 +295,8 @@ sub kadmin_disable {
     my $kadmin = kadmin_handle ($instance);
     eval { $kadmin->disablePrincipal ($principal) };
     if ($@) {
-	warn "error: $@\n";
-	exit 1;
+        warn "error: $@\n";
+        exit 1;
     }
 }
 
@@ -318,8 +318,8 @@ sub kadmin_enable {
     my $kadmin = kadmin_handle ($instance);
     eval { $kadmin->enablePrincipal ($principal) };
     if ($@) {
-	warn "error: $@\n";
-	exit 1;
+        warn "error: $@\n";
+        exit 1;
     }
 }
 
@@ -447,8 +447,8 @@ sub kadmin_reset {
     my $kadmin = kadmin_handle ($instance);
     eval { $kadmin->changePassword ($principal, $password) };
     if ($@) {
-	warn "error: $@\n";
-	exit 1;
+        warn "error: $@\n";
+        exit 1;
     }
 }
 
@@ -1060,7 +1060,7 @@ sub _sec2days {
     my $seconds = shift;
     my $val = Time::Seconds->new($seconds);
     my $str = sprintf ("%d days %02d:%02d:%02d", $val->days, $val->hours % 24,
-	$val->minutes % 60, $val->seconds % 60);
+        $val->minutes % 60, $val->seconds % 60);
     $str =~ s#days#day# if $val->days < 2;
     return $str;
 }
@@ -1082,11 +1082,11 @@ sub _attr2str {
                     'KRB5_KDB_REQUIRES_PRE_AUTH',
                     'KRB5_KDB_REQUIRES_PWCHANGE',
                     'KRB5_KDB_SUPPORT_DESMD5',
-	);
+        );
 
     foreach my $test (@possible) {
-	my $short;
-	($short = $test) =~ s#^KRB5_KDB_##;
+        my $short;
+        ($short = $test) =~ s#^KRB5_KDB_##;
         push (@attrs, $short) if $mask & &{"Heimdal::Kadm5::$test"}();
     }
     return join (' ', sort @attrs);
@@ -1097,18 +1097,18 @@ sub _attr2str {
 sub _keytype2text {
     my ($keytype) = @_;
     my %typemaps = ('aes256-cts-hmac-sha1-96'
-		        => 'AES-256 CTS mode with 96-bit SHA-1 HMAC',
-		    'aes128-cts-hmac-sha1-96'
-		        => 'AES-128 CTS mode with 96-bit SHA-1 HMAC',
-		    'arcfour-hmac-md5' => 'ArcFour with HMAC/md5',
-		    'des-cbc-crc'      => 'DES cbc mode with CRC-32',
-		    'des-cbc-md4'      => 'DES cbc mode with RSA-MD4',
-		    'des3-cbc-sha1'    => 'Triple DES cbc mode with HMAC/sha1',
-		    'des-cbc-md5'      => 'DES cbc mode with RSA-MD5',
-		    'des-hmac-sha1'    => 'DES with HMAC/sha1',
-		    'arcfour-hmac-exp' => 'Exportable RC4 with HMAC/MD5',
+                        => 'AES-256 CTS mode with 96-bit SHA-1 HMAC',
+                    'aes128-cts-hmac-sha1-96'
+                        => 'AES-128 CTS mode with 96-bit SHA-1 HMAC',
+                    'arcfour-hmac-md5' => 'ArcFour with HMAC/md5',
+                    'des-cbc-crc'      => 'DES cbc mode with CRC-32',
+                    'des-cbc-md4'      => 'DES cbc mode with RSA-MD4',
+                    'des3-cbc-sha1'    => 'Triple DES cbc mode with HMAC/sha1',
+                    'des-cbc-md5'      => 'DES cbc mode with RSA-MD5',
+                    'des-hmac-sha1'    => 'DES with HMAC/sha1',
+                    'arcfour-hmac-exp' => 'Exportable RC4 with HMAC/MD5',
 
-	);
+        );
     return $typemaps{$keytype} if exists $typemaps{$keytype};
     return $keytype;
 }
@@ -1231,7 +1231,7 @@ sub examine_principal {
 
     if ($CONFIG{$instance}{afs_fake}) {
         my $k4output;
-	if (!defined $princdata || !$princdata) {
+        if (!defined $princdata || !$princdata) {
             $k4output = 'error: No such entry in the database (-1783126247)';
         } else {
             # TODO - Get KRB5_KDB_DISALLOW_ALL_TIX out of $bitmask.
@@ -1244,13 +1244,13 @@ sub examine_principal {
             $k4output .= "account expiration: never\n";
             my $pwchange = $princdata->getLastPwdChange ();
             if ($pwchange) {
-		my $date = strftime ("%a %b %d %T %Y", localtime($pwchange));
+                my $date = strftime ("%a %b %d %T %Y", localtime($pwchange));
                 $k4output .= "password last changed: $date\n";
             }
             my $admin = $princdata->getModName ();
             my $modified = $princdata->getModDate ();
             if ($admin && $modified) {
-		my $date = strftime ("%a %b %d %T %Y", localtime($modified));
+                my $date = strftime ("%a %b %d %T %Y", localtime($modified));
                 $k4output .= "modification time: $date\n";
                 $k4output .= "modified by: $admin\n";
             }
