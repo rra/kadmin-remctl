@@ -516,12 +516,17 @@ sub kpasswd {
 
     my ($num, $error, $match, $before, $after)
         = $kpasswd->expect (2, 'kpasswd: krb5_get_init_creds:',
+                            'kpasswd: Password incorrect',
                             '-re', 'New password for \S+:');
-    if ($num == 1) {
-        $after =~ s/\r?\n.*//s;
-        $after =~ s/^\s+//;
-        if ($after eq 'Preauthentication failed') {
-            $after = 'Password incorrect while getting initial ticket';
+    if ($num == 1 || $num == 2) {
+        if ($num == 1) {
+            $after =~ s/\r?\n.*//s;
+            $after =~ s/^\s+//;
+            if ($after eq 'Preauthentication failed') {
+                $after = 'Password incorrect';
+            }
+        } else {
+            $after = 'Password incorrect';
         }
         warn "error: $after\n";
         print "retstr: $after\n";

@@ -1,5 +1,11 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.2 (unreleased)
+
+    Properly handle incorrect password errors from Heimdal's kpasswd.
+    Previously, if change_passwd failed because the original password was
+    incorrect, kadmin-remctl would output a confusing Expect error.
+
 kadmin-remctl 3.1 (2010-07-21)
 
     In the Heimdal backend, don't set KADM5_POLICY_NORMAL_MASK or
