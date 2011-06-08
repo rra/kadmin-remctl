@@ -2,6 +2,10 @@
 
 kadmin-remctl 3.2 (unreleased)
 
+    Add support for a separate blacklist of principals whose passwords
+    cannot be changed with reset_passwd but who do not themselves have the
+    ability to reset passwords.
+
     Properly handle incorrect password errors from Heimdal's kpasswd.
     Previously, if change_passwd failed because the original password was
     incorrect, kadmin-remctl-heim would output a confusing Expect error.
