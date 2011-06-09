@@ -1,3 +1,13 @@
+kadmin-remctl (3.2-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+    - Add support for a separate blacklist of accounts whose passwords
+      cannot be reset with reset_passwd.
+    - Properly handle incorrect password errors from Heimdal kpasswd.
+    - Yet more fixes to the Heimdal default attribute configuration.
+
+ -- Russ Allbery <rra@debian.org>  Thu, 09 Jun 2011 14:58:26 -0700
+
 kadmin-remctl (3.1-1) unstable; urgency=low
 
   * New upstream release.
