@@ -5,6 +5,7 @@ kadmin-remctl (3.2-1) UNRELEASED; urgency=low
       cannot be reset with reset_passwd.
     - Properly handle incorrect password errors from Heimdal kpasswd.
     - Yet more fixes to the Heimdal default attribute configuration.
+  * Update to debhelper compatibility level V8.
 
  -- Russ Allbery <rra@debian.org>  Thu, 09 Jun 2011 14:58:26 -0700
 
