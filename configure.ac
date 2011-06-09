@@ -1,8 +1,8 @@
 dnl Autoconf configuration for kadmin-remctl.
 dnl
 dnl Written by Russ Allbery <rra@stanford.edu>
-dnl Copyright 2007, 2008, 2010
-dnl     Board of Trustees, Leland Stanford Jr. University
+dnl Copyright 2007, 2008, 2010, 2011
+dnl     The Board of Trustees of the Leland Stanford Junior University
 dnl
 dnl See LICENSE for licensing terms.
 
@@ -11,7 +11,8 @@ AC_INIT([kadmin-remctl], [3.1], [rra@stanford.edu])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_LIBOBJ_DIR([portable])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE([1.11 check-news silent-rules])
+AM_INIT_AUTOMAKE([1.11 check-news foreign silent-rules subdir-objects
+    -Wall -Werror])
 AM_MAINTAINER_MODE
 
 AC_PROG_CC
@@ -25,6 +26,10 @@ RRA_LIB_KRB5
 RRA_LIB_KRB5_SWITCH
 AC_CHECK_FUNCS([krb5_get_init_creds_opt_alloc \
     krb5_get_init_creds_opt_set_default_flags])
+AC_CHECK_FUNCS([krb5_appdefault_string], ,
+    [AC_CHECK_FUNCS([krb5_get_profile])
+     AC_CHECK_HEADERS([k5profile.h profile.h])
+     AC_LIBOBJ([krb5-profile])])
 RRA_LIB_KRB5_RESTORE
 
 AC_HEADER_STDBOOL

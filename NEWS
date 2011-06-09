@@ -16,6 +16,16 @@ kadmin-remctl 3.2 (unreleased)
     principal.  This currently hard-codes enabling pre-auth for new
     principals and needs to be revisited.
 
+    Update to rra-c-util 3.6:
+
+    * Check for krb5-config in /usr/kerberos/bin as well as user's PATH.
+    * Add replacement for krb5_appdefault_* functions for AIX Kerberos.
+    * Fix broken GCC attribute markers.
+    * Fix Kerberos library probing without transitive shared libraries.
+    * Suppress warnings when probing for AIX-only Kerberos headers.
+    * Support Heimdal GSS-API on OpenBSD without a separate libroken.
+    * Update GCC warning flags for GCC 4.6.1.
+
 kadmin-remctl 3.1 (2010-07-21)
 
     In the Heimdal backend, don't set KADM5_POLICY_NORMAL_MASK or

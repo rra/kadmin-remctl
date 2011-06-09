@@ -17,7 +17,14 @@
  * krb5_free_unparsed_name() for both APIs since it's the most specific call.
  *
  * Written by Russ Allbery <rra@stanford.edu>
- * This work is hereby placed in the public domain by its author.
+ *
+ * The authors hereby relinquish any claim to any copyright that they may have
+ * in this work, whether granted under contract or by operation of law or
+ * international treaty, and hereby commit to the public, at large, that they
+ * shall not, at any time in the future, seek to enforce any copyright in this
+ * work against any person or entity, or prevent any person or entity from
+ * copying, publishing, distributing or creating derivative works of this
+ * work.
  */
 
 #ifndef PORTABLE_KRB5_H
@@ -38,6 +45,18 @@ BEGIN_DECLS
 
 /* Default to a hidden visibility for all portability functions. */
 #pragma GCC visibility push(hidden)
+
+/*
+ * AIX included Kerberos includes the profile library but not the
+ * krb5_appdefault functions, so we provide replacements that we have to
+ * prototype.
+ */
+#ifndef HAVE_KRB5_APPDEFAULT_STRING
+void krb5_appdefault_boolean(krb5_context, const char *, const krb5_data *,
+                             const char *, int, int *);
+void krb5_appdefault_string(krb5_context, const char *, const krb5_data *,
+                            const char *, const char *, char **);
+#endif
 
 /*
  * krb5_{get,free}_error_message are the preferred APIs for both current MIT
