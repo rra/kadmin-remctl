@@ -1,5 +1,31 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.2 (2011-06-09)
+
+    Add support for a separate blacklist of principals whose passwords
+    cannot be changed with reset_passwd but who do not themselves have the
+    ability to reset passwords.
+
+    Properly handle incorrect password errors from Heimdal's kpasswd.
+    Previously, if change_passwd failed because the original password was
+    incorrect, kadmin-remctl-heim would output a confusing Expect error.
+
+    When creating principals for Heimdal, set a default set of attributes
+    before making the principal.  Heimdal::Kadm5 doesn't seem to be
+    working properly with the default attributes from the default
+    principal.  This currently hard-codes enabling pre-auth for new
+    principals and needs to be revisited.
+
+    Update to rra-c-util 3.6:
+
+    * Check for krb5-config in /usr/kerberos/bin as well as user's PATH.
+    * Add replacement for krb5_appdefault_* functions for AIX Kerberos.
+    * Fix broken GCC attribute markers.
+    * Fix Kerberos library probing without transitive shared libraries.
+    * Suppress warnings when probing for AIX-only Kerberos headers.
+    * Support Heimdal GSS-API on OpenBSD without a separate libroken.
+    * Update GCC warning flags for GCC 4.6.1.
+
 kadmin-remctl 3.1 (2010-07-21)
 
     In the Heimdal backend, don't set KADM5_POLICY_NORMAL_MASK or

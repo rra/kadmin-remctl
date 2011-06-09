@@ -4,8 +4,8 @@
 #
 # Written by Russ Allbery <rra@stanford.edu>
 # Based heavily on work by Roland Schemers
-# Copyright 2003, 2007, 2008, 2009, 2010
-#     Board of Trustees, Leland Stanford Jr. University
+# Copyright 2003, 2007, 2008, 2009, 2010, 2011
+#     The Board of Trustees of the Leland Stanford Junior University
 #
 # Permission to use, copy, modify, and distribute this software and its
 # documentation for any purpose and without fee is hereby granted, provided
@@ -39,6 +39,10 @@ our $STRENGTH   = 'service/password-strength';
 
 # Path to the ACL file of who can change passwords.
 our $RESET_ACL  = '/etc/remctl/acl/password-reset';
+
+# Path to the blacklist file of additional people whose passwords may not be
+# changed.
+our $RESET_BLACKLIST = '/etc/kadmin/password-blacklist';
 
 # Reserved principal names.
 our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
@@ -952,7 +956,8 @@ sub kaserver_enable {
 # Reset a password.  The only tricky part here is that we have to be sure that
 # we're not resetting the password of a privileged account.  No user who can
 # themselves reset passwords is allowed to have their password changed by this
-# interface.  So first, we have to validate that.
+# interface, and there may also be a separate blacklist of accounts.  So
+# first, we have to validate that.
 sub reset_password {
     my ($principal, $instance, $password) = @_;
     check_principal ($principal, $instance);
@@ -963,6 +968,10 @@ sub reset_password {
     my $full = $principal;
     $full .= "/$instance" if $instance;
     if (check_acl ($RESET_ACL, $full)) {
+        warn "error: password changes not permitted for that user\n";
+        exit 2;
+    }
+    if (-f $RESET_BLACKLIST && check_acl ($RESET_BLACKLIST, $full)) {
         warn "error: password changes not permitted for that user\n";
         exit 2;
     }
@@ -1442,9 +1451,10 @@ parsing routines.  Using the YYYY-MM-DD HH:MM:SS format is recommended.
 
 The C<reset_passwd> function changes the password for a given principal
 without requiring knowledge of the old password.  Changing the password of
-a user who can themselves reset passwords is not permitted.  C<reset> is
-supported as a synonym (used primarily with a separate password reset
-service).
+a user who can themselves reset passwords is not permitted, and a separate
+blacklist of principals whose password cannot be changed is also
+supported.  C<reset> is supported as a synonym (used primarily with a
+separate password reset service).
 
 The C<instance check> function prints a message and returns 0 if that
 combination of principal and instance exists, or a different message and
@@ -1738,10 +1748,17 @@ like C<kadmin> and C<krbtgt>) or add additional principals to it.
 
 Path to the ACL file controlling who can change passwords for other users.
 B<kadmin-backend> checks the principal for which a password is being
-changed against this file and refuses password changes if the target
-principal is listed in this file.  This ensures that people who can change
-others' passwords cannot themselves have their password changed through
-that route, preventing privilege escalation.
+changed via the C<reset_passwd> function against this file and refuses
+password changes if the target principal is listed in this file.  This
+ensures that people who can change others' passwords cannot themselves
+have their password changed through that route, preventing privilege
+escalation.
+
+=item $RESET_BLACKLIST
+
+Path to a file containing additional principals whose passwords cannot be
+changed via the C<reset_passwd> function.  This file has the same syntax
+as the $RESET_ACL file.
 
 =item $STRENGTH
 

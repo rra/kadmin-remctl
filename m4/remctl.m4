@@ -16,9 +16,12 @@ dnl Depends on RRA_ENABLE_REDUCED_DEPENDS, RRA_SET_LDFLAGS, and
 dnl RRA_LIB_GSSAPI.
 dnl
 dnl Written by Russ Allbery <rra@stanford.edu>
-dnl Copyright 2008, 2009 Board of Trustees, Leland Stanford Jr. University
+dnl Copyright 2008, 2009
+dnl     The Board of Trustees of the Leland Stanford Junior University
 dnl
-dnl See LICENSE for licensing terms.
+dnl This file is free software; the authors give unlimited permission to copy
+dnl and/or distribute it, with or without modifications, as long as this
+dnl notice is preserved.
 
 dnl Save the current CPPFLAGS, LDFLAGS, and LIBS settings and switch to
 dnl versions that include the remctl flags.  Used as a wrapper, with
@@ -55,7 +58,7 @@ dnl Sanity-check the results of the remctl library search to be sure we can
 dnl really link a remctl program.
 AC_DEFUN([_RRA_LIB_REMCTL_CHECK],
 [RRA_LIB_REMCTL_SWITCH
- AC_CHECK_FUNC([remctl_open], ,
+ AC_CHECK_FUNC([remctl_open], [],
     [AC_MSG_FAILURE([unable to link with remctl library])])
  RRA_LIB_REMCTL_RESTORE])
 
