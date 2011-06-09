@@ -1,11 +1,11 @@
 # Automake makefile for kadmin-remctl.
 #
 # Written by Russ Allbery <rra@stanford.edu>
-# Copyright 2007, 2008, 2010 Board of Trustees, Leland Stanford Jr. University
+# Copyright 2007, 2008, 2010, 2011
+#     The Board of Trustees of the Leland Stanford Junior University
 #
 # See LICENSE for licensing terms.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = .gitignore LICENSE autogen docs/design ksetpass.pod	\
 	passwd_change.pod remctl/kadmin remctl/password
@@ -37,19 +37,26 @@ dist_sbin_SCRIPTS = kadmin-backend kadmin-backend-heim
 dist_man_MANS = passwd_change.1 kadmin-backend.8 kadmin-backend-heim.8 \
 	ksetpass.1
 
-# Make maintainer-clean do the right thing rather than what GNU thinks it
-# should do.
-MAINTAINERCLEANFILES = Makefile.in aclocal.m4 build-aux/depcomp \
-	build-aux/install-sh build-aux/missing config.h.in config.h.in~ \
-	configure passwd_change.1 kadmin-backend.8 kadmin-backend-heim.8 \
-	ksetpass.1
+# Work around the GNU Coding Standards, which leave all the Autoconf and
+# Automake stuff around after make maintainer-clean, thus making that command
+# mostly worthless.  Also remove the generated man pages.
+MAINTAINERCLEANFILES = Makefile.in aclocal.m4 build-aux/compile		\
+	build-aux/depcomp build-aux/install-sh build-aux/missing	\
+	config.h.in config.h.in~ configure kadmin-backend.8		\
+	kadmin-backend-heim.8 ksetpass.1 passwd_change.1
 
-# A set of flags for warnings.  Add -O because gcc won't find some warnings
-# without optimization turned on, and add -DDEBUG=1 so we'll also compile all
-# debugging code and test it.
-WARNINGS = -g -O -DDEBUG=1 -Wall -W -Wendif-labels -Wpointer-arith \
-        -Wbad-function-cast -Wwrite-strings -Wstrict-prototypes \
-        -Wmissing-prototypes -Wnested-externs -Werror
+# A set of flags for warnings.	Add -O because gcc won't find some warnings
+# without optimization turned on.  Desirable warnings that can't be turned
+# on due to other problems:
+#
+#     -Wconversion	http://bugs.debian.org/488884 (htons warnings)
+#
+# Last checked against gcc 4.6.1 (2011-05-04).
+WARNINGS = -g -O -Wall -Wextra -Wendif-labels -Wformat=2 -Winit-self	\
+	-Wswitch-enum -Wdeclaration-after-statement -Wshadow		\
+	-Wpointer-arith -Wbad-function-cast -Wwrite-strings		\
+	-Wjump-misses-init -Wlogical-op -Wstrict-prototypes		\
+	-Wmissing-prototypes -Wredundant-decls -Wnested-externs -Werror
 
 warnings:
 	$(MAKE) V=0 CFLAGS='$(WARNINGS)'

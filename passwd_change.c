@@ -9,7 +9,7 @@
  *
  * Written by Russ Allbery <rra@stanford.edu>
  * Copyright 1997, 2007, 2010
- *     Board of Trustees, Leland Stanford Jr. University
+ *     The Board of Trustees of the Leland Stanford Junior University
  *
  * See LICENSE for licensing terms.
  */

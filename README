@@ -1,12 +1,12 @@
-                            kadmin-remctl 3.1
+                            kadmin-remctl 3.2
              (remctl interface for Kerberos kadmin functions)
 
                 Written by Russ Allbery <rra@stanford.edu>
 
-  Copyright 1997, 2003, 2007, 2008, 2009, 2010 Board of Trustees, Leland
-  Stanford Jr. University.  This software is distributed under a BSD-style
-  license.  Please see the file LICENSE in the distribution for more
-  information.
+  Copyright 1997, 2003, 2007, 2008, 2009, 2010, 2011 The Board of Trustees
+  of the Leland Stanford Junior University.  This software is distributed
+  under a BSD-style license.  Please see the file LICENSE in the
+  distribution for more information.
 
 BLURB
 
@@ -98,7 +98,8 @@ REQUIREMENTS
 
       <http://www.eyrie.org/~eagle/software/remctl/>
 
-  kasetkey is available as part of the wallet distribution at:
+  kasetkey is available as part of old versions of the wallet distribution
+  at:
 
       <http://www.eyrie.org/~eagle/software/wallet/>
 

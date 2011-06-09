@@ -5,8 +5,8 @@
 # Written by Russ Allbery <rra@stanford.edu>
 # Heimdal port written by Jon Robertson <jonrober@stanford.edu>
 # Based heavily on work by Roland Schemers
-# Copyright 2003, 2007, 2008, 2009, 2010
-#     Board of Trustees, Leland Stanford Jr. University
+# Copyright 2003, 2007, 2008, 2009, 2010, 2011
+#     The Board of Trustees of the Leland Stanford Junior University
 #
 # Permission to use, copy, modify, and distribute this software and its
 # documentation for any purpose and without fee is hereby granted, provided
@@ -44,6 +44,10 @@ our $STRENGTH   = 'service/password-strength';
 
 # Path to the ACL file of who can change passwords.
 our $RESET_ACL  = '/etc/remctl/acl/password-reset';
+
+# Path to the blacklist file of additional people whose passwords may not be
+# changed.
+our $RESET_BLACKLIST = '/etc/kadmin/password-blacklist';
 
 # Reserved principal names.
 our %RESERVED   = map { $_ => 1 } qw(admin kadmin krbtgt root service);
@@ -214,10 +218,10 @@ sub kadmin_handle {
     return $CONFIG{$instance}{handle} if exists $CONFIG{$instance}{handle};
 
     my $kadmin =  Heimdal::Kadm5::Client->new(
-	Principal   => $CONFIG{$instance}{k5_admin},
-	Keytab      => $CONFIG{$instance}{k5_keytab},
-	RaiseErrors => 1,
-	);
+        Principal   => $CONFIG{$instance}{k5_admin},
+        Keytab      => $CONFIG{$instance}{k5_keytab},
+        RaiseErrors => 1,
+    );
     $CONFIG{$instance}{handle} = $kadmin;
     return $kadmin;
 }
@@ -247,11 +251,12 @@ sub kadmin_create {
     my $kadmin = kadmin_handle ($instance);
     my $princdata = eval { $kadmin->makePrincipal ($principal) };
 
-    my $attrs = $princdata->getAttributes;
+    # We'd like to use the default attributes, but that unfortunately doesn't
+    # seem to work to try loading them before the principal is actually
+    # created.  Instead, load a default here.
+    my $attrs = KRB5_KDB_REQUIRES_PRE_AUTH;
     if ($status ne 'enabled') {
-	$attrs |= KRB5_KDB_DISALLOW_ALL_TIX;
-    } else {
-	$attrs &= (~KRB5_KDB_DISALLOW_ALL_TIX);
+        $attrs |= KRB5_KDB_DISALLOW_ALL_TIX;
     }
     $princdata->setAttributes ($attrs);
 
@@ -268,8 +273,8 @@ sub kadmin_delete {
     my $kadmin = kadmin_handle ($instance);
     my $retval = eval { $kadmin->deletePrincipal ($principal) };
     if ($@) {
-	warn "error deleting $principal: $@";
-	exit 1;
+        warn "error deleting $principal: $@";
+        exit 1;
     }
 }
 
@@ -294,8 +299,8 @@ sub kadmin_disable {
     my $kadmin = kadmin_handle ($instance);
     eval { $kadmin->disablePrincipal ($principal) };
     if ($@) {
-	warn "error: $@\n";
-	exit 1;
+        warn "error: $@\n";
+        exit 1;
     }
 }
 
@@ -317,8 +322,8 @@ sub kadmin_enable {
     my $kadmin = kadmin_handle ($instance);
     eval { $kadmin->enablePrincipal ($principal) };
     if ($@) {
-	warn "error: $@\n";
-	exit 1;
+        warn "error: $@\n";
+        exit 1;
     }
 }
 
@@ -446,8 +451,8 @@ sub kadmin_reset {
     my $kadmin = kadmin_handle ($instance);
     eval { $kadmin->changePassword ($principal, $password) };
     if ($@) {
-	warn "error: $@\n";
-	exit 1;
+        warn "error: $@\n";
+        exit 1;
     }
 }
 
@@ -515,12 +520,17 @@ sub kpasswd {
 
     my ($num, $error, $match, $before, $after)
         = $kpasswd->expect (2, 'kpasswd: krb5_get_init_creds:',
+                            'kpasswd: Password incorrect',
                             '-re', 'New password for \S+:');
-    if ($num == 1) {
-        $after =~ s/\r?\n.*//s;
-        $after =~ s/^\s+//;
-        if ($after eq 'Preauthentication failed') {
-            $after = 'Password incorrect while getting initial ticket';
+    if ($num == 1 || $num == 2) {
+        if ($num == 1) {
+            $after =~ s/\r?\n.*//s;
+            $after =~ s/^\s+//;
+            if ($after eq 'Preauthentication failed') {
+                $after = 'Password incorrect';
+            }
+        } else {
+            $after = 'Password incorrect';
         }
         warn "error: $after\n";
         print "retstr: $after\n";
@@ -917,7 +927,8 @@ sub kaserver_enable {
 # Reset a password.  The only tricky part here is that we have to be sure that
 # we're not resetting the password of a privileged account.  No user who can
 # themselves reset passwords is allowed to have their password changed by this
-# interface.  So first, we have to validate that.
+# interface, and there may also be a separate blacklist of accounts.  So
+# first, we have to validate that.
 sub reset_password {
     my ($principal, $instance, $password) = @_;
     check_principal ($principal, $instance);
@@ -937,6 +948,10 @@ sub reset_password {
             print "retstr: password rejected by strength checking\n";
             exit 1;
         }
+    }
+    if (-f $RESET_BLACKLIST && check_acl ($RESET_BLACKLIST, $full)) {
+        warn "error: password changes not permitted for that user\n";
+        exit 2;
     }
     if ($CONFIG{$instance}{k5_admin}) {
         kadmin_reset ($principal, $instance, $password);
@@ -1054,7 +1069,7 @@ sub _sec2days {
     my $seconds = shift;
     my $val = Time::Seconds->new($seconds);
     my $str = sprintf ("%d days %02d:%02d:%02d", $val->days, $val->hours % 24,
-	$val->minutes % 60, $val->seconds % 60);
+        $val->minutes % 60, $val->seconds % 60);
     $str =~ s#days#day# if $val->days < 2;
     return $str;
 }
@@ -1076,11 +1091,11 @@ sub _attr2str {
                     'KRB5_KDB_REQUIRES_PRE_AUTH',
                     'KRB5_KDB_REQUIRES_PWCHANGE',
                     'KRB5_KDB_SUPPORT_DESMD5',
-	);
+        );
 
     foreach my $test (@possible) {
-	my $short;
-	($short = $test) =~ s#^KRB5_KDB_##;
+        my $short;
+        ($short = $test) =~ s#^KRB5_KDB_##;
         push (@attrs, $short) if $mask & &{"Heimdal::Kadm5::$test"}();
     }
     return join (' ', sort @attrs);
@@ -1091,18 +1106,18 @@ sub _attr2str {
 sub _keytype2text {
     my ($keytype) = @_;
     my %typemaps = ('aes256-cts-hmac-sha1-96'
-		        => 'AES-256 CTS mode with 96-bit SHA-1 HMAC',
-		    'aes128-cts-hmac-sha1-96'
-		        => 'AES-128 CTS mode with 96-bit SHA-1 HMAC',
-		    'arcfour-hmac-md5' => 'ArcFour with HMAC/md5',
-		    'des-cbc-crc'      => 'DES cbc mode with CRC-32',
-		    'des-cbc-md4'      => 'DES cbc mode with RSA-MD4',
-		    'des3-cbc-sha1'    => 'Triple DES cbc mode with HMAC/sha1',
-		    'des-cbc-md5'      => 'DES cbc mode with RSA-MD5',
-		    'des-hmac-sha1'    => 'DES with HMAC/sha1',
-		    'arcfour-hmac-exp' => 'Exportable RC4 with HMAC/MD5',
+                        => 'AES-256 CTS mode with 96-bit SHA-1 HMAC',
+                    'aes128-cts-hmac-sha1-96'
+                        => 'AES-128 CTS mode with 96-bit SHA-1 HMAC',
+                    'arcfour-hmac-md5' => 'ArcFour with HMAC/md5',
+                    'des-cbc-crc'      => 'DES cbc mode with CRC-32',
+                    'des-cbc-md4'      => 'DES cbc mode with RSA-MD4',
+                    'des3-cbc-sha1'    => 'Triple DES cbc mode with HMAC/sha1',
+                    'des-cbc-md5'      => 'DES cbc mode with RSA-MD5',
+                    'des-hmac-sha1'    => 'DES with HMAC/sha1',
+                    'arcfour-hmac-exp' => 'Exportable RC4 with HMAC/MD5',
 
-	);
+        );
     return $typemaps{$keytype} if exists $typemaps{$keytype};
     return $keytype;
 }
@@ -1225,7 +1240,7 @@ sub examine_principal {
 
     if ($CONFIG{$instance}{afs_fake}) {
         my $k4output;
-	if (!defined $princdata || !$princdata) {
+        if (!defined $princdata || !$princdata) {
             $k4output = 'error: No such entry in the database (-1783126247)';
         } else {
             # TODO - Get KRB5_KDB_DISALLOW_ALL_TIX out of $bitmask.
@@ -1238,13 +1253,13 @@ sub examine_principal {
             $k4output .= "account expiration: never\n";
             my $pwchange = $princdata->getLastPwdChange ();
             if ($pwchange) {
-		my $date = strftime ("%a %b %d %T %Y", localtime($pwchange));
+                my $date = strftime ("%a %b %d %T %Y", localtime($pwchange));
                 $k4output .= "password last changed: $date\n";
             }
             my $admin = $princdata->getModName ();
             my $modified = $princdata->getModDate ();
             if ($admin && $modified) {
-		my $date = strftime ("%a %b %d %T %Y", localtime($modified));
+                my $date = strftime ("%a %b %d %T %Y", localtime($modified));
                 $k4output .= "modification time: $date\n";
                 $k4output .= "modified by: $admin\n";
             }
@@ -1545,9 +1560,10 @@ parsing routines.  Using the YYYY-MM-DD HH:MM:SS format is recommended.
 
 The C<reset_passwd> function changes the password for a given principal
 without requiring knowledge of the old password.  Changing the password of
-a user who can themselves reset passwords is not permitted.  C<reset> is
-supported as a synonym (used primarily with a separate password reset
-service).
+a user who can themselves reset passwords is not permitted, and a separate
+blacklist of principals whose password cannot be changed is also
+supported.  C<reset> is supported as a synonym (used primarily with a
+separate password reset service).
 
 The C<instance check> function prints a message and returns 0 if that
 combination of principal and instance exists, or a different message and
@@ -1835,10 +1851,17 @@ like C<kadmin> and C<krbtgt>) or add additional principals to it.
 
 Path to the ACL file controlling who can change passwords for other users.
 B<kadmin-backend> checks the principal for which a password is being
-changed against this file and refuses password changes if the target
-principal is listed in this file.  This ensures that people who can change
-others' passwords cannot themselves have their password changed through
-that route, preventing privilege escalation.
+changed via the C<reset_passwd> function against this file and refuses
+password changes if the target principal is listed in this file.  This
+ensures that people who can change others' passwords cannot themselves
+have their password changed through that route, preventing privilege
+escalation.
+
+=item $RESET_BLACKLIST
+
+Path to a file containing additional principals whose passwords cannot be
+changed via the C<reset_passwd> function.  This file has the same syntax
+as the $RESET_ACL file.
 
 =item $STRENGTH
 
