@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 3.2 (unreleased)
+kadmin-remctl 3.2 (2011-06-09)
 
     Add support for a separate blacklist of principals whose passwords
     cannot be changed with reset_passwd but who do not themselves have the
