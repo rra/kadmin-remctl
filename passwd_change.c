@@ -18,6 +18,7 @@
 #include <portable/krb5.h>
 #include <portable/system.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <remctl.h>
 #include <signal.h>
@@ -307,7 +308,7 @@ int
 main(int argc, char **argv)
 {
     krb5_context ctx;
-    char *passwd, *service, *host;
+    char *passwd, *service, *host, *p;
     char principal[BUFSIZ], ans[BUFSIZ];
     int port, status, tries;
     char *name;
@@ -351,7 +352,8 @@ main(int argc, char **argv)
   
     /*
      * If we were given a username on the command line, use it.  Otherwise,
-     * prompt for a username whose password we're changing.
+     * prompt for a username whose password we're changing.  Strip whitespace
+     * from the username.
      */
     if (argc > 1)
         strncpy(principal, argv[1], sizeof(principal) - 1);
@@ -359,7 +361,14 @@ main(int argc, char **argv)
         printf("Enter username whose password you wish to change: ");
         if (fgets(principal, sizeof(principal), stdin) == NULL)
             sysdie("error reading username");
-        principal[strlen(principal) - 1] = '\0';
+        p = principal + strlen(principal) - 1;
+        while (p > principal && isspace((unsigned char) *p))
+             p--;
+        p[1] = '\0';
+        for (p = principal; isspace((unsigned char) *p); p++)
+            ;
+        if (p != principal)
+            memmove(principal, p, strlen(p) + 1);
     }
 
     /* Find the real name and print it out to make sure it's right. */

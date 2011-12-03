@@ -1,5 +1,10 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.3 (unreleased)
+
+    When prompting for a username in passwd_change, strip any surrounding
+    whitespace from that username before proceeding.
+
 kadmin-remctl 3.2 (2011-06-09)
 
     Add support for a separate blacklist of principals whose passwords
