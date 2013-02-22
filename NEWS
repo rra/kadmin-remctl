@@ -2,6 +2,13 @@
 
 kadmin-remctl 3.3 (unreleased)
 
+    In the Heimdal version of kadmin-backend, retry the kadmin connection
+    once if the first connection fails.  This is a workaround for a
+    transient networking error that we're seeing at Stanford and therefore
+    may not be fully appropriate for other sites.  Even on a successful
+    reconnect, this will cause some errors to be sent to standard error
+    due to the behavior of Heimdal::Kadm5.
+
     When prompting for a username in passwd_change, strip any surrounding
     whitespace from that username before proceeding.
 
