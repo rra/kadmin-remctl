@@ -222,20 +222,29 @@ sub kadmin_handle {
     my $first = 1;
   CONNECT:
     {
-        local $SIG{__WARN__} = sub {};
+        my $olderr;
+        if (open($olderr, '>&', \*STDERR)) {
+            close(STDERR) or warn "cannot close STDERR: $!\n";
+        }
         $kadmin = eval {
             Heimdal::Kadm5::Client->new(
-                Principal   => $CONFIG{$instance}{k5_admin},
-                Keytab      => $CONFIG{$instance}{k5_keytab},
-                RaiseErrors => 1,
+                Principal  => $CONFIG{$instance}{k5_admin},
+                Keytab     => $CONFIG{$instance}{k5_keytab},
+                RaiseError => 1,
             );
         };
+        if ($olderr) {
+            open(STDERR, '>&', $olderr) or warn "cannot reopen STDERR: $!\n";
+            close($olderr) or warn "cannot close duplicate STDERR: $!\n";
+        }
         if ($first && ($@ || !$kadmin)) {
             $first = 0;
             redo CONNECT;
         }
         if ($@ || !$kadmin) {
-            die;
+            my $error = $@ || "unknown error\n";
+            warn "error: cannot connect to kadmin server: $error\n";
+            exit 1;
         }
     }
     $CONFIG{$instance}{handle} = $kadmin;
@@ -276,7 +285,11 @@ sub kadmin_create {
     }
     $princdata->setAttributes ($attrs);
 
-    eval { $kadmin->createPrincipal ($princdata, $password, 0) };
+    if (!eval { $kadmin->createPrincipal ($princdata, $password, 0) }) {
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot create $principal: $error";
+        exit 1;
+    }
 }
 
 # Delete a principal using kadmin.
@@ -287,9 +300,9 @@ sub kadmin_delete {
     $principal = "$principal/$instance" if $instance;
 
     my $kadmin = kadmin_handle ($instance);
-    my $retval = eval { $kadmin->deletePrincipal ($principal) };
-    if ($@) {
-        warn "error deleting $principal: $@";
+    if (!eval { $kadmin->deletePrincipal ($principal) }) {
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot delete principal: $error";
         exit 1;
     }
 }
@@ -313,9 +326,9 @@ sub kadmin_disable {
     $principal = "$principal/$instance" if $instance;
 
     my $kadmin = kadmin_handle ($instance);
-    eval { $kadmin->disablePrincipal ($principal) };
-    if ($@) {
-        warn "error: $@\n";
+    if (!eval { $kadmin->disablePrincipal ($principal) }) {
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot disable $principal: $error";
         exit 1;
     }
 }
@@ -334,11 +347,11 @@ sub kadmin_enable {
             exit 1;
         }
     }
-
     my $kadmin = kadmin_handle ($instance);
     eval { $kadmin->enablePrincipal ($principal) };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot enable $principal: $error\n";
         exit 1;
     }
 }
@@ -366,7 +379,8 @@ sub kadmin_expiration {
     my $kadmin = kadmin_handle ($instance);
     my $data = eval { $kadmin->getPrincipal ($principal) };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot retrieve $principal: $error\n";
         exit 1;
     } elsif (!defined $data) {
         warn "error: principal $principal does not exist\n";
@@ -377,7 +391,8 @@ sub kadmin_expiration {
         $kadmin->modifyPrincipal ($data);
     };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot modify $principal: $error\n";
         exit 1;
     }
 }
@@ -405,7 +420,8 @@ sub kadmin_pwexpiration {
     my $kadmin = kadmin_handle ($instance);
     my $data = eval { $kadmin->getPrincipal ($principal) };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot retrieve $principal: $error\n";
         exit 1;
     } elsif (!defined $data) {
         warn "error: principal $principal does not exist\n";
@@ -416,7 +432,8 @@ sub kadmin_pwexpiration {
         $kadmin->modifyPrincipal ($data);
     };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot modify $principal: $error\n";
         exit 1;
     }
 }
@@ -431,7 +448,8 @@ sub kadmin_expiration_check {
     my $kadmin = kadmin_handle ($instance);
     my $data = eval { $kadmin->getPrincipal ($principal) };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot retrieve $principal: $error\n";
         exit 1;
     } elsif (!defined $data) {
         warn "error: principal $principal does not exist\n";
@@ -467,7 +485,8 @@ sub kadmin_reset {
     my $kadmin = kadmin_handle ($instance);
     eval { $kadmin->changePassword ($principal, $password) };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot change password for $principal: $error\n";
         exit 1;
     }
 }
