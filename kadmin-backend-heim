@@ -33,6 +33,7 @@ use Expect ();
 use Date::Parse qw(str2time);
 use Heimdal::Kadm5 qw(KRB5_KDB_REQUIRES_PRE_AUTH KADM5_POLICY_NORMAL_MASK
                       KRB5_KDB_DISALLOW_ALL_TIX KADM5_POLICY_CLR);
+use IPC::Run qw(run);
 use POSIX;
 use Time::Seconds;
 
@@ -504,28 +505,16 @@ sub password_check {
     check_password ($password);
     $principal = "$principal/$instance" if $instance;
     return unless $CONFIG{$instance}{pwcheck};
-    my $pid = open (CHECKER, '-|');
-    if (not defined $pid) {
-        die "error: cannot fork: $!\n";
-    } elsif ($pid == 0) {
-        open (STDERR, '>&STDOUT') or exit 1;
-        open (PROGRAM, '|-', $CONFIG{$instance}{pwcheck}, $principal)
-            or die "error: cannot run $CONFIG{$instance}{pwcheck}: $!\n";
-        print PROGRAM "principal: $principal\n";
-        print PROGRAM "new-password: $password\n";
-        print PROGRAM "end\n";
-        close PROGRAM;
-        exit ($? >> 8);
-    } else {
-        my $output = <CHECKER>;
-        close CHECKER;
-        unless ($output eq "APPROVED\n" and $? == 0) {
-            $output =~ s/\n/ /g;
-            $output =~ s/\s+$//;
-            warn "error: Insecure password rejected\n";
-            print "retstr: Insecure password: $output\n";
-            return;
-        }
+    my $in = "principal: $principal\nnew-password: $password\nend\n";
+    my $out;
+    run ([$CONFIG{$instance}{pwcheck}, $principal], \$in, \$out, \$out);
+    unless ($out eq "APPROVED\n" && $? == 0) {
+        $out ||= '';
+        $out =~ s/\n/ /g;
+        $out =~ s/\s+$//;
+        warn "error: Insecure password rejected\n";
+        print "retstr: Insecure password: $out\n";
+        return;
     }
     return 1;
 }

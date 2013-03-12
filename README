@@ -67,12 +67,13 @@ DESCRIPTION
 REQUIREMENTS
 
   The kadmin backend is written in Perl and requires the Perl Expect
-  module.  The MIT version (kadmin-backend) calls the MIT Kerberos v5
-  kadmin and kpasswd programs and therefore requires that they be
-  available.  The Heimdal version similarly requires kpasswd, but uses the
-  Perl module Heimdal::Kadm5 for kadmin operations and requires it be
-  installed.  For integration with the AFS kaserver Kerberos v4 realm, it
-  uses kasetkey.  The Kerberos v4 synchronization is disabled by default.
+  module.  The Heimdal version also requires the IPC::Run module.  The MIT
+  version (kadmin-backend) calls the MIT Kerberos v5 kadmin and kpasswd
+  programs and therefore requires that they be available.  The Heimdal
+  version similarly requires kpasswd, but uses the Perl module
+  Heimdal::Kadm5 for kadmin operations and requires it be installed.  For
+  integration with the AFS kaserver Kerberos v4 realm, it uses kasetkey.
+  The Kerberos v4 synchronization is disabled by default.
 
   The kadmin backend can propagate instance creation and deletion to an
   Active Directory.  To use this support, you will need the Perl Encode,

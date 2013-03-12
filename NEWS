@@ -15,6 +15,9 @@ kadmin-remctl 3.3 (unreleased)
     functions uniformly use the same standard error formatting and exit
     status for kadmin failures.
 
+    The Heimdal version of kadmin-backend now requires the IPC::Run Perl
+    module (available from CPAN).
+
     When prompting for a username in passwd_change, strip any surrounding
     whitespace from that username before proceeding.
 
