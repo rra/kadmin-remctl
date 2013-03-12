@@ -1318,7 +1318,9 @@ if ($cmd eq 'change_passwd') {
     my $princ = shift;
     my $pass  = shift or die "error: missing password\n";
 
-    password_check ($princ, '', $pass);
+    unless (password_check ($princ, '', $pass)) {
+        exit 1;
+    }
 
 } elsif ($cmd eq 'create') {
 
