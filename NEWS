@@ -18,6 +18,9 @@ kadmin-remctl 3.3 (unreleased)
     The Heimdal version of kadmin-backend now requires the IPC::Run Perl
     module (available from CPAN).
 
+    Produce a better error message when trying to change the password of a
+    disabled account with the Heimdal backend.
+
     When prompting for a username in passwd_change, strip any surrounding
     whitespace from that username before proceeding.
 

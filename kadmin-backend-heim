@@ -553,6 +553,9 @@ sub kpasswd {
             if ($after eq 'Preauthentication failed') {
                 $after = 'Password incorrect';
             }
+            if ($after eq 'No ENC-TS found') {
+                $after = 'Account is disabled';
+            }
         } else {
             $after = 'Password incorrect';
         }
