@@ -4,20 +4,17 @@
 # module build (and probably the other interpretors as well).
 export DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow,+pie
 
+# Append the settings for the password file path and password change host
+# used at Stanford to the CFLAGS.
+export DEB_CFLAGS_MAINT_APPEND = -DHOST='"password-change.stanford.edu"' \
+	-DPASSWD_FILE='"/afs/ir/service/etc/passwd.all"'
+
 # Link with --as-needed so that the remctl client library doesn't inherit
 # the shared library dependencies of libremctl.
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
 # Path to the Heimdal variant of the kadmin-remctl package.
 HEIMDAL = debian/kadmin-remctl-heimdal
-
-CFLAGS = -g -Wall -DPASSWD_FILE=\\\"/afs/ir/service/etc/passwd.all\\\" \
-	-DHOST=\\\"password-change.stanford.edu\\\"
-ifneq (,$(filter noopt,$(DEB_BUILD_OPTIONS)))
-    CFLAGS += -O0
-else
-    CFLAGS += -O2
-endif
 
 %:
 	dh $@ --parallel --with autoreconf
@@ -26,8 +23,7 @@ override_dh_autoreconf:
 	dh_autoreconf --as-needed
 
 override_dh_auto_configure:
-	dh_auto_configure --parallel -- CFLAGS="$(CFLAGS)" \
-	    --enable-reduced-depends
+	dh_auto_configure --parallel -- --enable-reduced-depends
 
 override_dh_auto_install:
 	dh_auto_install

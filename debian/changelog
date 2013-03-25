@@ -19,6 +19,8 @@ kadmin-remctl (3.3-1) UNRELEASED; urgency=low
   * Update to debhelper compatibility level V9.
     - Enable parallel builds.
     - Enable build hardening flags.
+    - Use DEB_CFLAGS_MAINT_APPEND to add the Stanford-specific settings
+      for the password file path and remctl host for password changes.
   * Update to standards version 3.9.4.
     - Add branch information to the Vcs-Git header.
   * Convert debian/copyright to copyright-format 1.0.
