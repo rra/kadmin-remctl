@@ -17,21 +17,22 @@ BLURB
   of instances and creation, deletion, and management of accounts in
   Heimdal, MIT Kerberos, Active Directory, and an AFS kaserver where
   appropriate.  Also included is a client for privileged users to use
-  for password resets.  Many of the defaults and namespace checks are
-  Stanford-specific, but it can be modified for other sites.
+  for password resets and a simple client for password chnages via the
+  Kerberos password change protocol.  Many of the defaults and namespace
+  checks are Stanford-specific, but it can be modified for other sites.
 
 DESCRIPTION
 
-  At Stanford, we at one time had three Kerberos realms: an MIT Kerberos
-  v5 realm, an Active Directory realm, and an AFS kaserver Kerberos v4
-  realm.  We also have middleware and web applications that support
-  changing or resetting passwords, creating new accounts, examining
-  principals, and enabling or disabling accounts based on affiliation
-  changes.  Rather than give all of these systems kadmin access (and force
-  them to use kadmin clients, which is difficult since many are written in
-  Java), and rather than forcing them to do realm synchronization
-  themselves, we export an interface via remctl and use the Java remctl
-  client to talk to that interface.
+  At Stanford, we are currently running two Kerberos realms: a Heimdal
+  Kerberos realm and an Active Directory realm.  We previously also had
+  an AFS kaserver Kerberos v4 realm.  We also have middleware and web
+  applications that support changing or resetting passwords, creating new
+  accounts, examining principals, and enabling or disabling accounts based
+  on affiliation changes.  Rather than give all of these systems kadmin
+  access (and force them to use kadmin clients, which is difficult since
+  many are written in Java), and rather than forcing them to do realm
+  synchronization themselves, we export an interface via remctl and use
+  the Java remctl client to talk to that interface.
 
   This package includes the kadmin backend, a Perl script that supports
   creating, deleting, enabling, and disabling accounts, changing or
@@ -52,11 +53,19 @@ DESCRIPTION
   principal normally used by remctl and require that the privileged user
   reauthenticate before using this service.
 
-  Some aspects of this package are very Stanford-specific, most notably
-  the sometimes-bizarre formatting of the output from this script (which
+  Some aspects of this package are very Stanford-specific, most
+  notably some of the namespace constraints on principals and the
+  sometimes-bizarre formatting of the output from this script (which
   is for compatibility with the legacy APIs used at Stanford).  It is
   probably not suitable for using at other sites without modifications,
   but may provide ideas for how to do something similar for another site.
+
+  The remctl backend was originally developed by Roland Schemers in
+  conjunction with a locally-patched Kerberos v4 kadmin client.  Booker
+  Bense wrote the code to talk to a Kerberos v5 kadmin client via Expect.
+  I've since substantially rewritten it to merge those features and add
+  additional code to propagate instance creation to Active Directory.  Jon
+  Robertson ported the MIT Kerberos code to Heimdal using Heimdal::Kadm5.
 
   The AFS kaserver support should be considered frozen and is no longer
   tested since Stanford no longer runs a kaserver environment.  It may be
@@ -85,12 +94,9 @@ REQUIREMENTS
       <http://www.eyrie.org/~eagle/software/kstart/>
 
   The passwd_change C client requires the C libremctl library be available
-  to build (plus, obviously, a C compiler).  It also requires a Kerberos
-  library; any version of either MIT Kerberos or Heimdal should be
-  sufficiant.
-
-  ksetpass requires a Kerberos library; either MIT Kerberos or Heimdal
-  should be sufficient.
+  to build (plus, obviously, a C compiler).  It and ksetpass also require
+  a Kerberos library; any version of either MIT Kerberos or Heimdal should
+  be sufficient.
 
   Finally, the backend is intended to be run under remctld and use remctl
   to handle authentication, privacy, and integrity.
