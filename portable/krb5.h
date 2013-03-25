@@ -16,6 +16,9 @@
  * prefers the generic krb5_xfree().  In this case, this header provides
  * krb5_free_unparsed_name() for both APIs since it's the most specific call.
  *
+ * The canonical version of this file is maintained in the rra-c-util package,
+ * which can be found at <http://www.eyrie.org/~eagle/software/rra-c-util/>.
+ *
  * Written by Russ Allbery <rra@stanford.edu>
  *
  * The authors hereby relinquish any claim to any copyright that they may have
@@ -39,7 +42,12 @@
 #endif
 #include <portable/macros.h>
 
-#include <krb5.h>
+#ifdef HAVE_KRB5_H
+# include <krb5.h>
+#else
+# include <krb5/krb5.h>
+#endif
+#include <stdlib.h>
 
 BEGIN_DECLS
 
@@ -75,17 +83,25 @@ void krb5_free_error_message(krb5_context, const char *);
 #endif
 
 /*
- * Both current MIT and current Heimdal prefer _opt_alloc, but older versions
- * of both require allocating your own struct and calling _opt_init.
+ * Both current MIT and current Heimdal prefer _opt_alloc and _opt_free, but
+ * older versions of both require allocating your own struct and calling
+ * _opt_init.
  */
 #ifndef HAVE_KRB5_GET_INIT_CREDS_OPT_ALLOC
 krb5_error_code krb5_get_init_creds_opt_alloc(krb5_context,
                                               krb5_get_init_creds_opt **);
 #endif
+#ifdef HAVE_KRB5_GET_INIT_CREDS_OPT_FREE
+# ifndef HAVE_KRB5_GET_INIT_CREDS_OPT_FREE_2_ARGS
+#  define krb5_get_init_creds_opt_free(c, o) krb5_get_init_creds_opt_free(o)
+# endif
+#else
+# define krb5_get_init_creds_opt_free(c, o) free(o)
+#endif
 
 /* Heimdal-specific. */
 #ifndef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_DEFAULT_FLAGS
-#define krb5_get_init_creds_opt_set_default_flags(c, p, r, o) /* empty */
+# define krb5_get_init_creds_opt_set_default_flags(c, p, r, o) /* empty */
 #endif
 
 /* Undo default visibility change. */

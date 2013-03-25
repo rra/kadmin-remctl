@@ -8,6 +8,9 @@
  * Please do not reformat or otherwise change this file more than necessary so
  * that later merges with the original source are easy.  Bug fixes and
  * improvements should be sent back to the original author.
+ *
+ * The canonical version of this file is maintained in the rra-c-util package,
+ * which can be found at <http://www.eyrie.org/~eagle/software/rra-c-util/>.
  */
 
 /*
@@ -429,7 +432,7 @@ static int dopr (char *buffer, size_t maxlen, const char *format, va_list args)
 	break;
       case 'w':
 	/* not supported yet, treat as next char */
-	ch = *format++;
+	format++;
 	break;
       default:
 	/* Unknown, skip */

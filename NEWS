@@ -29,6 +29,23 @@ kadmin-remctl 3.3 (unreleased)
     When prompting for a username in passwd_change, strip any surrounding
     whitespace from that username before proceeding.
 
+    Update to rra-c-util 4.8:
+
+    * Fix Heimdal libroken probes for old versions of Heimdal.
+    * Fix Kerberos header probing with non-standard include paths.
+    * Pass --deps to krb5-config if it is supported.
+    * Properly find krb5.h on NetBSD systems.
+    * Fix stripping of -I/usr/include from krb5-config output.
+    * Avoid using krb5-config if specific Kerberos paths are configured.
+    * Use PATH_KRB5_CONFIG instead of KRB5_CONFIG to locate krb5-config.
+    * Replace concat with xasprintf.
+    * xasprintf is now void and always calls the failure handler on error.
+    * Improve __attribute__ portability to old GCC or non-GCC compilers.
+    * Add -D_FORTIFY_SOURCE=2 to make warnings flags.
+    * Probe for ssize_t and replace it in portable/system.h if not found.
+    * Include strings.h in portable/system.h if it exists.
+    * Add a pointer to rra-c-util in all files.
+
 kadmin-remctl 3.2 (2011-06-09)
 
     Add support for a separate blacklist of principals whose passwords
