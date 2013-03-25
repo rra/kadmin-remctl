@@ -7,7 +7,7 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow,+pie
 # Append the settings for the password file path and password change host
 # used at Stanford to the CFLAGS.
 export DEB_CFLAGS_MAINT_APPEND = -DHOST='"password-change.stanford.edu"' \
-	-DPASSWD_FILE='"/afs/ir/service/etc/passwd.all"'
+	-DPASSWD_FILE='"/afs/ir.stanford.edu/service/etc/passwd.all"'
 
 # Link with --as-needed so that the remctl client library doesn't inherit
 # the shared library dependencies of libremctl.
