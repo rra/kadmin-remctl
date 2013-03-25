@@ -1,5 +1,9 @@
 #!/usr/bin/make -f
 
+# Add hardening build flags.  We have to omit PIE because it breaks the Perl
+# module build (and probably the other interpretors as well).
+export DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow,+pie
+
 HEIMDAL = debian/kadmin-remctl-heimdal
 
 CFLAGS = -g -Wall -DPASSWD_FILE=\\\"/afs/ir/service/etc/passwd.all\\\" \
@@ -11,7 +15,7 @@ else
 endif
 
 %:
-	dh $@
+	dh $@ --parallel
 
 override_dh_auto_configure:
 	dh_auto_configure -- CFLAGS="$(CFLAGS)" --enable-reduced-depends
