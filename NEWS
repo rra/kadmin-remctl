@@ -1,5 +1,51 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.3 (2013-03-25)
+
+    In the Heimdal version of kadmin-backend, retry the kadmin connection
+    once if the first connection fails.  This is a workaround for a
+    transient networking error that we're seeing at Stanford and therefore
+    may not be fully appropriate for other sites, but should hopefully be
+    harmless.  Also suppress the standard error output from the Heimdal
+    library during connect since Heimdal::Kadm5 does not.
+
+    Clean up error reporting in the Heimdal version of kadmin-backend.
+    Use the correct (rather than the documented) way to tell
+    Heimdal::Kadm5 to throw exceptions, and ensure that all kadmin
+    functions uniformly use the same standard error formatting and exit
+    status for kadmin failures.
+
+    Exit with a non-zero status if the check_passwd command rejects the
+    password.  Previously, an error would be reported but the backend
+    would always report a successful zero status if the password could be
+    checked, even if it was rejected.
+
+    The Heimdal version of kadmin-backend now requires the IPC::Run Perl
+    module (available from CPAN).
+
+    Produce a better error message when trying to change the password of a
+    disabled account with the Heimdal backend.
+
+    When prompting for a username in passwd_change, strip any surrounding
+    whitespace from that username before proceeding.
+
+    Update to rra-c-util 4.8:
+
+    * Fix Heimdal libroken probes for old versions of Heimdal.
+    * Fix Kerberos header probing with non-standard include paths.
+    * Pass --deps to krb5-config if it is supported.
+    * Properly find krb5.h on NetBSD systems.
+    * Fix stripping of -I/usr/include from krb5-config output.
+    * Avoid using krb5-config if specific Kerberos paths are configured.
+    * Use PATH_KRB5_CONFIG instead of KRB5_CONFIG to locate krb5-config.
+    * Replace concat with xasprintf.
+    * xasprintf is now void and always calls the failure handler on error.
+    * Improve __attribute__ portability to old GCC or non-GCC compilers.
+    * Add -D_FORTIFY_SOURCE=2 to make warnings flags.
+    * Probe for ssize_t and replace it in portable/system.h if not found.
+    * Include strings.h in portable/system.h if it exists.
+    * Add a pointer to rra-c-util in all files.
+
 kadmin-remctl 3.2 (2011-06-09)
 
     Add support for a separate blacklist of principals whose passwords

@@ -1,9 +1,12 @@
 /*
- * Error handling for Kerberos v5.
+ * Error handling for Kerberos.
  *
  * Provides versions of die and warn that take a Kerberos context and a
  * Kerberos error code and append the Kerberos error message to the provided
  * formatted message.
+ *
+ * The canonical version of this file is maintained in the rra-c-util package,
+ * which can be found at <http://www.eyrie.org/~eagle/software/rra-c-util/>.
  *
  * Written by Russ Allbery <rra@stanford.edu>
  * Copyright 2006, 2007, 2008, 2009, 2010
@@ -48,12 +51,15 @@ die_krb5(krb5_context ctx, krb5_error_code code, const char *format, ...)
     char *message;
     va_list args;
 
-    k5_msg = krb5_get_error_message(ctx, code);
+    if (ctx != NULL)
+        k5_msg = krb5_get_error_message(ctx, code);
     va_start(args, format);
-    if (xvasprintf(&message, format, args) < 0)
-        die("internal error: unable to format error message");
+    xvasprintf(&message, format, args);
     va_end(args);
-    die("%s: %s", message, k5_msg);
+    if (k5_msg == NULL)
+        die("%s", message);
+    else
+        die("%s: %s", message, k5_msg);
 }
 
 
@@ -67,12 +73,16 @@ warn_krb5(krb5_context ctx, krb5_error_code code, const char *format, ...)
     char *message;
     va_list args;
 
-    k5_msg = krb5_get_error_message(ctx, code);
+    if (ctx != NULL)
+        k5_msg = krb5_get_error_message(ctx, code);
     va_start(args, format);
-    if (xvasprintf(&message, format, args) < 0)
-        die("internal error: unable to format error message");
+    xvasprintf(&message, format, args);
     va_end(args);
-    warn("%s: %s", message, k5_msg);
+    if (k5_msg == NULL)
+        warn("%s", message);
+    else
+        warn("%s: %s", message, k5_msg);
     free(message);
-    krb5_free_error_message(ctx, k5_msg);
+    if (k5_msg != NULL)
+        krb5_free_error_message(ctx, k5_msg);
 }

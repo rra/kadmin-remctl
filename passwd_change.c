@@ -8,7 +8,7 @@
  * the command line).
  *
  * Written by Russ Allbery <rra@stanford.edu>
- * Copyright 1997, 2007, 2010
+ * Copyright 1997, 2007, 2010, 2013
  *     The Board of Trustees of the Leland Stanford Junior University
  *
  * See LICENSE for licensing terms.
@@ -18,11 +18,11 @@
 #include <portable/krb5.h>
 #include <portable/system.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <remctl.h>
 #include <signal.h>
 
-#include <util/concat.h>
 #include <util/messages-krb5.h>
 #include <util/messages.h>
 #include <util/xmalloc.h>
@@ -269,7 +269,7 @@ find_name(char *username, const char *passwd_file)
     int count;
 
     /* Build our search string, which is the username followed by a :. */
-    search = concat(username, ":", (char *) 0);
+    xasprintf(&search, "%s:", username);
 
     /* Open the password file. */
     passwd = fopen(passwd_file, "r");
@@ -307,7 +307,7 @@ int
 main(int argc, char **argv)
 {
     krb5_context ctx;
-    char *passwd, *service, *host;
+    char *passwd, *service, *host, *p;
     char principal[BUFSIZ], ans[BUFSIZ];
     int port, status, tries;
     char *name;
@@ -351,7 +351,8 @@ main(int argc, char **argv)
   
     /*
      * If we were given a username on the command line, use it.  Otherwise,
-     * prompt for a username whose password we're changing.
+     * prompt for a username whose password we're changing.  Strip whitespace
+     * from the username.
      */
     if (argc > 1)
         strncpy(principal, argv[1], sizeof(principal) - 1);
@@ -359,7 +360,14 @@ main(int argc, char **argv)
         printf("Enter username whose password you wish to change: ");
         if (fgets(principal, sizeof(principal), stdin) == NULL)
             sysdie("error reading username");
-        principal[strlen(principal) - 1] = '\0';
+        p = principal + strlen(principal) - 1;
+        while (p > principal && isspace((unsigned char) *p))
+             p--;
+        p[1] = '\0';
+        for (p = principal; isspace((unsigned char) *p); p++)
+            ;
+        if (p != principal)
+            memmove(principal, p, strlen(p) + 1);
     }
 
     /* Find the real name and print it out to make sure it's right. */

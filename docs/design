@@ -197,3 +197,13 @@ Help Desk Password Changes
     called passwd_change that presents some information about the SUNet
     ID, asks them to confirm, does a special authentication, and then
     contacts this service via remctl using the C remctl client library.
+
+License
+
+    Copyright 2007, 2013
+        The Board of Trustees of the Leland Stanford Junior University
+
+    Copying and distribution of this file, with or without modification,
+    are permitted in any medium without royalty provided the copyright
+    notice and this notice are preserved.  This file is offered as-is,
+    without any warranty.
