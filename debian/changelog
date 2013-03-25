@@ -18,6 +18,7 @@ kadmin-remctl (3.3-1) UNRELEASED; urgency=low
     - Enable build hardening flags.
   * Update to standards version 3.9.4.
     - Add branch information to the Vcs-Git header.
+  * Convert debian/copyright to copyright-format 1.0.
 
  -- Russ Allbery <rra@debian.org>  Mon, 25 Mar 2013 10:29:15 -0700
 
