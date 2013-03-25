@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 3.3 (unreleased)
+kadmin-remctl 3.3 (2013-03-25)
 
     In the Heimdal version of kadmin-backend, retry the kadmin connection
     once if the first connection fails.  This is a workaround for a
