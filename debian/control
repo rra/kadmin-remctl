@@ -26,7 +26,8 @@ Description: remctl backend providing kadmin functions (MIT)
 Package: kadmin-remctl-heimdal
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends},
- heimdal-clients | krb5-user, libexpect-perl, libheimdal-kadm5-perl
+ heimdal-clients | krb5-user, libexpect-perl, libheimdal-kadm5-perl,
+ libipc-run-perl
 Recommends: kasetkey (>= 0.9), kstart, ldap-utils, libtext-template-perl,
  remctl-server
 Conflicts: kadmin-remctl
