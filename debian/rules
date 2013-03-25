@@ -4,6 +4,11 @@
 # module build (and probably the other interpretors as well).
 export DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow,+pie
 
+# Link with --as-needed so that the remctl client library doesn't inherit
+# the shared library dependencies of libremctl.
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+
+# Path to the Heimdal variant of the kadmin-remctl package.
 HEIMDAL = debian/kadmin-remctl-heimdal
 
 CFLAGS = -g -Wall -DPASSWD_FILE=\\\"/afs/ir/service/etc/passwd.all\\\" \
@@ -15,10 +20,14 @@ else
 endif
 
 %:
-	dh $@ --parallel
+	dh $@ --parallel --with autoreconf
+
+override_dh_autoreconf:
+	dh_autoreconf --as-needed
 
 override_dh_auto_configure:
-	dh_auto_configure -- CFLAGS="$(CFLAGS)" --enable-reduced-depends
+	dh_auto_configure --parallel -- CFLAGS="$(CFLAGS)" \
+	    --enable-reduced-depends
 
 override_dh_auto_install:
 	dh_auto_install
