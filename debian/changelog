@@ -1,3 +1,17 @@
+kadmin-remctl (3.3-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+    - In the Heimdal version, retry the kadmin connection once if it fails
+      and suppress standard error from the Heimdal libraries during the
+      connection attempt.
+    - Clean up error reporting in the Heimdal version of kadmin-backend.
+    - Exit with a non-zero status if check_passwd rejects a password.
+    - Produce a better error when attempting to change the password of a
+      disabled account in the Heimdal kadmin-backend.
+    - Strip whitespace from usernames in passwd_change.
+
+ -- Russ Allbery <rra@debian.org>  Mon, 25 Mar 2013 10:29:15 -0700
+
 kadmin-remctl (3.2-1) unstable; urgency=low
 
   * New upstream release.
