@@ -1,7 +1,7 @@
 # Automake makefile for kadmin-remctl.
 #
 # Written by Russ Allbery <rra@stanford.edu>
-# Copyright 2007, 2008, 2010, 2011
+# Copyright 2007, 2008, 2010, 2011, 2013
 #     The Board of Trustees of the Leland Stanford Junior University
 #
 # See LICENSE for licensing terms.
@@ -20,9 +20,9 @@ portable_libportable_a_SOURCES = portable/dummy.c portable/krb5-extra.c \
         portable/system.h
 portable_libportable_a_CPPFLAGS = $(KRB5_CPPFLAGS)
 portable_libportable_a_LIBADD = $(LIBOBJS)
-util_libutil_a_SOURCES = util/concat.c util/concat.h util/macros.h	\
-        util/messages-krb5.c util/messages-krb5.h util/messages.c	\
-        util/messages.h util/xmalloc.c util/xmalloc.h
+util_libutil_a_SOURCES = util/macros.h util/messages-krb5.c		    \
+        util/messages-krb5.h util/messages.c util/messages.h util/xmalloc.c \
+        util/xmalloc.h
 util_libutil_a_CPPFLAGS = $(KRB5_CPPFLAGS)
 
 bin_PROGRAMS = passwd_change ksetpass
@@ -45,18 +45,21 @@ MAINTAINERCLEANFILES = Makefile.in aclocal.m4 build-aux/compile		\
 	config.h.in config.h.in~ configure kadmin-backend.8		\
 	kadmin-backend-heim.8 ksetpass.1 passwd_change.1
 
-# A set of flags for warnings.	Add -O because gcc won't find some warnings
+# A set of flags for warnings.  Add -O because gcc won't find some warnings
 # without optimization turned on.  Desirable warnings that can't be turned
 # on due to other problems:
 #
-#     -Wconversion	http://bugs.debian.org/488884 (htons warnings)
+#     -Wconversion      http://bugs.debian.org/488884 (htons warnings)
 #
-# Last checked against gcc 4.6.1 (2011-05-04).
-WARNINGS = -g -O -Wall -Wextra -Wendif-labels -Wformat=2 -Winit-self	\
-	-Wswitch-enum -Wdeclaration-after-statement -Wshadow		\
-	-Wpointer-arith -Wbad-function-cast -Wwrite-strings		\
-	-Wjump-misses-init -Wlogical-op -Wstrict-prototypes		\
-	-Wmissing-prototypes -Wredundant-decls -Wnested-externs -Werror
+# Last checked against gcc 4.6.1 (2011-05-04).  -D_FORTIFY_SOURCE=2 enables
+# warn_unused_result attribute markings on glibc functions on Linux, which
+# catches a few more issues.
+WARNINGS = -g -O -D_FORTIFY_SOURCE=2 -Wall -Wextra -Wendif-labels	    \
+	-Wformat=2 -Winit-self -Wswitch-enum -Wdeclaration-after-statement  \
+	-Wshadow -Wpointer-arith -Wbad-function-cast -Wcast-align	    \
+	-Wwrite-strings -Wjump-misses-init -Wlogical-op			    \
+	-Wstrict-prototypes -Wmissing-prototypes -Wredundant-decls	    \
+	-Wnested-externs -Werror
 
 warnings:
 	$(MAKE) V=0 CFLAGS='$(WARNINGS)'

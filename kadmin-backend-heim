@@ -5,22 +5,26 @@
 # Written by Russ Allbery <rra@stanford.edu>
 # Heimdal port written by Jon Robertson <jonrober@stanford.edu>
 # Based heavily on work by Roland Schemers
-# Copyright 2003, 2007, 2008, 2009, 2010, 2011
+# Copyright 2003, 2007, 2008, 2009, 2010, 2011, 2013
 #     The Board of Trustees of the Leland Stanford Junior University
 #
-# Permission to use, copy, modify, and distribute this software and its
-# documentation for any purpose and without fee is hereby granted, provided
-# that the above copyright notice appear in all copies and that both that
-# copyright notice and this permission notice appear in supporting
-# documentation, and that the name of Stanford University not be used in
-# advertising or publicity pertaining to distribution of the software without
-# specific, written prior permission.  Stanford University makes no
-# representations about the suitability of this software for any purpose.  It
-# is provided "as is" without express or implied warranty.
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to
+# deal in the Software without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+# sell copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
 #
-# THIS SOFTWARE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
-# WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
-# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+# IN THE SOFTWARE.
 
 ##############################################################################
 # Modules and declarations
@@ -33,6 +37,7 @@ use Expect ();
 use Date::Parse qw(str2time);
 use Heimdal::Kadm5 qw(KRB5_KDB_REQUIRES_PRE_AUTH KADM5_POLICY_NORMAL_MASK
                       KRB5_KDB_DISALLOW_ALL_TIX KADM5_POLICY_CLR);
+use IPC::Run qw(run);
 use POSIX;
 use Time::Seconds;
 
@@ -217,11 +222,36 @@ sub kadmin_handle {
     my ($instance) = @_;
     return $CONFIG{$instance}{handle} if exists $CONFIG{$instance}{handle};
 
-    my $kadmin =  Heimdal::Kadm5::Client->new(
-        Principal   => $CONFIG{$instance}{k5_admin},
-        Keytab      => $CONFIG{$instance}{k5_keytab},
-        RaiseErrors => 1,
-    );
+    # If the connection fails, retry once.
+    my $kadmin;
+    my $first = 1;
+  CONNECT:
+    {
+        my $olderr;
+        if (open($olderr, '>&', \*STDERR)) {
+            close(STDERR) or warn "cannot close STDERR: $!\n";
+        }
+        $kadmin = eval {
+            Heimdal::Kadm5::Client->new(
+                Principal  => $CONFIG{$instance}{k5_admin},
+                Keytab     => $CONFIG{$instance}{k5_keytab},
+                RaiseError => 1,
+            );
+        };
+        if ($olderr) {
+            open(STDERR, '>&', $olderr) or warn "cannot reopen STDERR: $!\n";
+            close($olderr) or warn "cannot close duplicate STDERR: $!\n";
+        }
+        if ($first && ($@ || !$kadmin)) {
+            $first = 0;
+            redo CONNECT;
+        }
+        if ($@ || !$kadmin) {
+            my $error = $@ || "unknown error\n";
+            warn "error: cannot connect to kadmin server: $error\n";
+            exit 1;
+        }
+    }
     $CONFIG{$instance}{handle} = $kadmin;
     return $kadmin;
 }
@@ -260,7 +290,11 @@ sub kadmin_create {
     }
     $princdata->setAttributes ($attrs);
 
-    eval { $kadmin->createPrincipal ($princdata, $password, 0) };
+    if (!eval { $kadmin->createPrincipal ($princdata, $password, 0) }) {
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot create $principal: $error";
+        exit 1;
+    }
 }
 
 # Delete a principal using kadmin.
@@ -271,9 +305,9 @@ sub kadmin_delete {
     $principal = "$principal/$instance" if $instance;
 
     my $kadmin = kadmin_handle ($instance);
-    my $retval = eval { $kadmin->deletePrincipal ($principal) };
-    if ($@) {
-        warn "error deleting $principal: $@";
+    if (!eval { $kadmin->deletePrincipal ($principal) }) {
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot delete principal: $error";
         exit 1;
     }
 }
@@ -297,9 +331,9 @@ sub kadmin_disable {
     $principal = "$principal/$instance" if $instance;
 
     my $kadmin = kadmin_handle ($instance);
-    eval { $kadmin->disablePrincipal ($principal) };
-    if ($@) {
-        warn "error: $@\n";
+    if (!eval { $kadmin->disablePrincipal ($principal) }) {
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot disable $principal: $error";
         exit 1;
     }
 }
@@ -318,11 +352,11 @@ sub kadmin_enable {
             exit 1;
         }
     }
-
     my $kadmin = kadmin_handle ($instance);
     eval { $kadmin->enablePrincipal ($principal) };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot enable $principal: $error\n";
         exit 1;
     }
 }
@@ -350,7 +384,8 @@ sub kadmin_expiration {
     my $kadmin = kadmin_handle ($instance);
     my $data = eval { $kadmin->getPrincipal ($principal) };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot retrieve $principal: $error\n";
         exit 1;
     } elsif (!defined $data) {
         warn "error: principal $principal does not exist\n";
@@ -361,7 +396,8 @@ sub kadmin_expiration {
         $kadmin->modifyPrincipal ($data);
     };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot modify $principal: $error\n";
         exit 1;
     }
 }
@@ -389,7 +425,8 @@ sub kadmin_pwexpiration {
     my $kadmin = kadmin_handle ($instance);
     my $data = eval { $kadmin->getPrincipal ($principal) };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot retrieve $principal: $error\n";
         exit 1;
     } elsif (!defined $data) {
         warn "error: principal $principal does not exist\n";
@@ -400,7 +437,8 @@ sub kadmin_pwexpiration {
         $kadmin->modifyPrincipal ($data);
     };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot modify $principal: $error\n";
         exit 1;
     }
 }
@@ -415,7 +453,8 @@ sub kadmin_expiration_check {
     my $kadmin = kadmin_handle ($instance);
     my $data = eval { $kadmin->getPrincipal ($principal) };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot retrieve $principal: $error\n";
         exit 1;
     } elsif (!defined $data) {
         warn "error: principal $principal does not exist\n";
@@ -451,7 +490,8 @@ sub kadmin_reset {
     my $kadmin = kadmin_handle ($instance);
     eval { $kadmin->changePassword ($principal, $password) };
     if ($@) {
-        warn "error: $@\n";
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot change password for $principal: $error\n";
         exit 1;
     }
 }
@@ -469,28 +509,16 @@ sub password_check {
     check_password ($password);
     $principal = "$principal/$instance" if $instance;
     return unless $CONFIG{$instance}{pwcheck};
-    my $pid = open (CHECKER, '-|');
-    if (not defined $pid) {
-        die "error: cannot fork: $!\n";
-    } elsif ($pid == 0) {
-        open (STDERR, '>&STDOUT') or exit 1;
-        open (PROGRAM, '|-', $CONFIG{$instance}{pwcheck}, $principal)
-            or die "error: cannot run $CONFIG{$instance}{pwcheck}: $!\n";
-        print PROGRAM "principal: $principal\n";
-        print PROGRAM "new-password: $password\n";
-        print PROGRAM "end\n";
-        close PROGRAM;
-        exit ($? >> 8);
-    } else {
-        my $output = <CHECKER>;
-        close CHECKER;
-        unless ($output eq "APPROVED\n" and $? == 0) {
-            $output =~ s/\n/ /g;
-            $output =~ s/\s+$//;
-            warn "error: Insecure password rejected\n";
-            print "retstr: Insecure password: $output\n";
-            return;
-        }
+    my $in = "principal: $principal\nnew-password: $password\nend\n";
+    my $out;
+    run ([$CONFIG{$instance}{pwcheck}, $principal], \$in, \$out, \$out);
+    unless ($out eq "APPROVED\n" && $? == 0) {
+        $out ||= '';
+        $out =~ s/\n/ /g;
+        $out =~ s/\s+$//;
+        warn "error: Insecure password rejected\n";
+        print "retstr: Insecure password: $out\n";
+        return;
     }
     return 1;
 }
@@ -528,6 +556,9 @@ sub kpasswd {
             $after =~ s/^\s+//;
             if ($after eq 'Preauthentication failed') {
                 $after = 'Password incorrect';
+            }
+            if ($after eq 'No ENC-TS found') {
+                $after = 'Account is disabled';
             }
         } else {
             $after = 'Password incorrect';
@@ -1291,7 +1322,9 @@ if ($cmd eq 'change_passwd') {
     my $princ = shift;
     my $pass  = shift or die "error: missing password\n";
 
-    password_check ($princ, '', $pass);
+    unless (password_check ($princ, '', $pass)) {
+        exit 1;
+    }
 
 } elsif ($cmd eq 'create') {
 
@@ -1889,6 +1922,34 @@ normally set by the B<remctld> server.
 
 =back
 
+=head1 AUTHOR
+
+Russ Allbery <rra@stanford.edu>, based heavily on work by Roland Schemers.
+Original Heimdal port written by Jon Robertson <jonrober@stanford.edu>.
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2009, 2010, 2011, 2013 The Board of Trustees of the Leland
+Stanford Junior University
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
 =head1 SEE ALSO
 
 k5start(1), kasetkey(8), ksetpass(1), ldap.conf(5), ldapadd(1),
@@ -1896,9 +1957,5 @@ ldapdelete(1), ldapmodify(1), ldapsearch(1)
 
 This program is part of kadmin-remctl.  The current version is available
 from L<http://www.eyrie.org/~eagle/software/kadmin-remctl/>.
-
-=head1 AUTHOR
-
-Russ Allbery <rra@stanford.edu>
 
 =cut
