@@ -5,9 +5,9 @@ kadmin-remctl 3.3 (unreleased)
     In the Heimdal version of kadmin-backend, retry the kadmin connection
     once if the first connection fails.  This is a workaround for a
     transient networking error that we're seeing at Stanford and therefore
-    may not be fully appropriate for other sites.  Also suppress the
-    standard error output from the Heimdal library since Heimdal::Kadm5
-    does not.
+    may not be fully appropriate for other sites, but should hopefully be
+    harmless.  Also suppress the standard error output from the Heimdal
+    library during connect since Heimdal::Kadm5 does not.
 
     Clean up error reporting in the Heimdal version of kadmin-backend.
     Use the correct (rather than the documented) way to tell
