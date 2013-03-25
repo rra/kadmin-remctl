@@ -1,4 +1,4 @@
-kadmin-remctl (3.3-1) UNRELEASED; urgency=low
+kadmin-remctl (3.3-1) unstable; urgency=low
 
   * New upstream release.
     - In the Heimdal version, retry the kadmin connection once if it fails
@@ -26,7 +26,7 @@ kadmin-remctl (3.3-1) UNRELEASED; urgency=low
     - Add branch information to the Vcs-Git header.
   * Convert debian/copyright to copyright-format 1.0.
 
- -- Russ Allbery <rra@debian.org>  Mon, 25 Mar 2013 10:29:15 -0700
+ -- Russ Allbery <rra@debian.org>  Mon, 25 Mar 2013 11:06:03 -0700
 
 kadmin-remctl (3.2-1) unstable; urgency=low
 
