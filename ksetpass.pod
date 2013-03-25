@@ -34,15 +34,25 @@ The maximum length of the password is limited to BUFSIZ, generally between
 1KB and 4KB, because I'm lazy and didn't feel like writing buffer
 reallocation code.
 
+=head1 AUTHOR
+
+Russ Allbery <rra@stanford.edu>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2008, 2010, 2013 The Board of Trustees of the Leland Stanford
+Junior University
+
+Copying and distribution of this file, with or without modification, are
+permitted in any medium without royalty provided the copyright notice and
+this notice are preserved.  This file is offered as-is, without any
+warranty.
+
 =head1 SEE ALSO
 
 kpasswd(1)
 
 This program is part of kadmin-remctl.  The current version is available
 from L<http://www.eyrie.org/~eagle/software/kadmin-remctl/>.
-
-=head1 AUTHOR
-
-Russ Allbery <rra@stanford.edu>
 
 =cut
