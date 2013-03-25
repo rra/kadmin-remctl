@@ -9,6 +9,7 @@ kadmin-remctl (3.3-1) UNRELEASED; urgency=low
     - Produce a better error when attempting to change the password of a
       disabled account in the Heimdal kadmin-backend.
     - Strip whitespace from usernames in passwd_change.
+  * Switch to xz compression for the upstream and Debian tarballs.
   * Move single-debian-patch to local-options and patch-header to
     local-patch-header so that they only apply to the packages I build and
     NMUs get regular version-numbered patches.
