@@ -1,4 +1,4 @@
-                            kadmin-remctl 3.3
+                            kadmin-remctl 3.4
              (remctl interface for Kerberos kadmin functions)
 
                 Written by Russ Allbery <rra@stanford.edu>

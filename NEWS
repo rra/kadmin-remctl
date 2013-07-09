@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 3.4 (unreleased)
+kadmin-remctl 3.4 (2013-07-09)
 
     Set the disallow-svr flag on all newly-created principals.  This
     prohibits obtaining service tickets for the principal, which provides
