@@ -36,7 +36,8 @@ no strict 'refs';
 use Expect ();
 use Date::Parse qw(str2time);
 use Heimdal::Kadm5 qw(KRB5_KDB_REQUIRES_PRE_AUTH KADM5_POLICY_NORMAL_MASK
-                      KRB5_KDB_DISALLOW_ALL_TIX KADM5_POLICY_CLR);
+                      KRB5_KDB_DISALLOW_ALL_TIX KRB5_KDB_DISALLOW_SVR
+                      KADM5_POLICY_CLR);
 use IPC::Run qw(run);
 use POSIX;
 use Time::Seconds;
