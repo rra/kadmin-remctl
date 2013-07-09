@@ -1,5 +1,18 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.4 (2013-07-09)
+
+    Set the disallow-svr flag on all newly-created principals.  This
+    prohibits obtaining service tickets for the principal, which provides
+    some hardening against brute force attacks.  Since the create command
+    is designed for creation of user principals, not service principals,
+    and use of service tickets for user principals is quite obscure and
+    rare in Kerberos, this seems like a better default.
+
+    Change the default allowed principal regex to allow two-character user
+    principals.  This is just a default and can be overridden by setting
+    the allowed key in the configuration.
+
 kadmin-remctl 3.3 (2013-03-25)
 
     In the Heimdal version of kadmin-backend, retry the kadmin connection

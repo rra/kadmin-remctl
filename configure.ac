@@ -7,7 +7,7 @@ dnl
 dnl See LICENSE for licensing terms.
 
 AC_PREREQ([2.64])
-AC_INIT([kadmin-remctl], [3.3], [rra@stanford.edu])
+AC_INIT([kadmin-remctl], [3.4], [rra@stanford.edu])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_LIBOBJ_DIR([portable])
 AC_CONFIG_MACRO_DIR([m4])
@@ -17,7 +17,9 @@ AM_MAINTAINER_MODE
 
 AC_PROG_CC
 AC_USE_SYSTEM_EXTENSIONS
+AC_SYS_LARGEFILE
 AM_PROG_CC_C_O
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 
