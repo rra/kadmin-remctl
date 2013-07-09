@@ -284,7 +284,7 @@ sub kadmin_create {
     # We'd like to use the default attributes, but that unfortunately doesn't
     # seem to work to try loading them before the principal is actually
     # created.  Instead, load a default here.
-    my $attrs = KRB5_KDB_REQUIRES_PRE_AUTH;
+    my $attrs = KRB5_KDB_REQUIRES_PRE_AUTH | KRB5_KDB_DISALLOW_SVR;
     if ($status ne 'enabled') {
         $attrs |= KRB5_KDB_DISALLOW_ALL_TIX;
     }

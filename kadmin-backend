@@ -272,7 +272,7 @@ sub kadmin_create {
     check_password ($password);
     kadmin_config ($instance) or return;
     $principal = "$principal/$instance" if $instance;
-    my $command = 'add_principal +requires_preauth';
+    my $command = 'add_principal +requires_preauth -allow_svr';
     if ($CONFIG{$instance}{policy}) {
         $command .= " -policy $CONFIG{$instance}{policy}";
     } else {
