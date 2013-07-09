@@ -113,6 +113,7 @@ login(krb5_context ctx, char *service)
         goto fail;
     }
     krb5_cc_close(ctx, ccache);
+    ccache = NULL;
 
     /* Now, we have the user's principal in principal.  Authenticate. */
     status = krb5_get_init_creds_opt_alloc(ctx, &opts);
