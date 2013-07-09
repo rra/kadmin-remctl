@@ -179,7 +179,7 @@ sub check_instance {
 sub check_principal {
     my ($principal, $instance) = @_;
     check_instance ($instance);
-    my $regex = $CONFIG{$instance}{allowed} || '^[a-z][0-9a-z]{2,7}\z';
+    my $regex = $CONFIG{$instance}{allowed} || '^[a-z][0-9a-z]{1,7}\z';
     if ($principal !~ /$regex/ || $RESERVED{$principal}) {
         die "error: invalid principal: $principal\n";
     }
@@ -1372,7 +1372,7 @@ account instances (principals in the form I<principal>/I<instance>).
 
 All of these functions except for C<examine> and the C<instance> functions
 by default only accept principals with no instances or realms, and that
-consist of three to eight characters starting with a lowercase letter and
+consist of two to eight characters starting with a lowercase letter and
 containing only digits and lowercase letters.  This can be overridden in
 the configuration.  C<instance> functions require a principal that fits
 the same requirements and an instance that starts with a letter and
