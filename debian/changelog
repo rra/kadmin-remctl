@@ -4,6 +4,7 @@ kadmin-remctl (3.4-1) UNRELEASED; urgency=low
     - Set the disallow-svr flag on all newly-created principals.
     - Change the default principal regex to allow two-character principal
       names.
+  * Drop --as-needed for now for easier backporting to squeeze.
 
  -- Russ Allbery <rra@debian.org>  Tue, 09 Jul 2013 15:31:05 -0700
 
@@ -24,8 +25,8 @@ kadmin-remctl (3.3-1) unstable; urgency=low
     local-patch-header so that they only apply to the packages I build and
     NMUs get regular version-numbered patches.
   * Use dh-autoreconf to rebuild the Autotools build system, and link with
-    --as-needed to remove the additional unnecessarily library
-    dependencies for the client.
+    --as-needed to remove the additional unnecessary library dependencies
+    for the client.
   * Update to debhelper compatibility level V9.
     - Enable parallel builds.
     - Enable build hardening flags.
