@@ -1518,9 +1518,9 @@ rejected if they're reserved, and explicit configuration is required for
 each instance (including the empty instance, for principals without an
 instance).
 
-Whether an action will be performed in Kerberos v5, Active Directory, or
-an AFS kaserver Kerberos v4 realm or some combination of the three is
-determined by the configuration.
+Whether an action will be performed in a Heimdal Kerberos KDC, Active
+Directory, or an AFS kaserver Kerberos v4 realm or some combination of the
+three is determined by the configuration.
 
 The C<instance> functions should only be used to manage instances that
 have regular passwords.  Instances used by automated processes via keytabs
@@ -1551,29 +1551,30 @@ C<retstr:> and a space.
 
 The C<create> function creates a new principal with the given password.
 If the third argument is C<enabled>, the new account is created enabled.
-If C<disabled>, the new account is created with DISALLOW_ALL_TIX set in
-Kerberos v5, NOTGS in the AFS kaserver, and a userAccountControl of 514 in
+If C<disabled>, the new account is created with C<disallow-all-tix> set in
+Heimdal, NOTGS in the AFS kaserver, and a userAccountControl of 514 in
 Active Directory.
 
 The C<delete> function deletes the given principal.
 
-The C<disable> function sets DISALLOW_ALL_TIX on the principal in Kerberos
-v5, NOTGS in the AFS kaserver, or a userAccountControl of 514 in Active
-Directory.
+The C<disable> function sets C<disallow-all-tix> on the principal in
+Heimdal, NOTGS in the AFS kaserver, or a userAccountControl of 514 in
+Active Directory.
 
-The C<enable> function clears DISALLOW_ALL_TIX on the principal in Kerberos
-v5, NOTGS in the AFS kaserver, or sets a userAccountControl of 512 in
+The C<enable> function clears C<disallow-all-tix> on the principal in
+Heimdal, NOTGS in the AFS kaserver, or sets a userAccountControl of 512 in
 Active Directory.
 
 The C<examine> function prints out information about the principal in
-Kerberos v5 and, if configured, the AFS kaserver.  It does not support
-Active Directory.  This is the only function that accepts principals with
+Kerberos and, if configured, the AFS kaserver.  It does not support Active
+Directory.  This is the only function that accepts principals with
 instances.  If AFS kaserver support is configured, it attempts to convert
 principals with an instance into their Kerberos v4 equivalent before
 looking them up there.  The output format for the AFS kaserver is the same
-as the old Kerberos v4 B<kadmin> output, and the output for Kerberos v5 is
-the result of B<kadmin getprinc>.  A line of 40 dashes separates the first
-from the second if AFS kaserver support is configured.
+as the old Kerberos v4 B<kadmin> output, and the output for Heimdal is the
+same as the MIT Kerberos B<kadmin getprinc> output (even from a Heimdal
+KDC).  A line of 40 dashes separates the first from the second if AFS
+kaserver support is configured.
 
 The C<expiration> function changes the expiration date of a principal.
 This is not propagated into an AFS kaserver or into Active Directory.  The
@@ -1605,13 +1606,14 @@ returns 1 if the instance does not exist.
 The C<instance create> function creates a new I<principal>/I<instance>
 Kerberos principal, provided that it doesn't already exist, and sets its
 password to the provided password.  This principal may or may not have
-password checking enabled, depending on the configuration for that instance.
+password checking enabled, depending on the configuration for that
+instance.
 
-The C<instance delete> function deletes a I<principal>/I<instance> Kerberos
-principal.
+The C<instance delete> function deletes a I<principal>/I<instance>
+Kerberos principal.
 
 The C<instance list> function lists all Kerberos principals with the given
-instance.  This function only supports Kerberos v5, not Active Directory.
+instance.  This function only supports Heimdal, not Active Directory.
 Note that this list may contain service principals and other reserved
 principals that cannot be managed through this interface.
 
@@ -1752,9 +1754,9 @@ propagation of operations to an AFS kaserver environment is attempted.
 
 Controls how the Kerberos v4 examine output is constructed.  If this key
 is set to a true value, B<kadmin-backend> will create fake Kerberos v4
-kadmin examine output based on the Kerberos v5 output, even if AFS
-kaserver integration is otherwise configured.  This is probably only of
-interest at Stanford University to support an old API.
+kadmin examine output based on the Heimdal output, even if AFS kaserver
+integration is otherwise configured.  This is probably only of interest at
+Stanford University to support an old API.
 
 =item afs_srvtab
 
@@ -1775,9 +1777,7 @@ which are processed recursively.
 The value is a regular expression that overrides the default regular
 expression used to check principals (the non-instance portion).  Be sure
 that this regular expression doesn't allow an instance (instances are
-handled separately) or a realm, and be sure it rejects any characters that
-might confuse the shell or B<kadmin> (shell metacharacters, whitespace,
-and so forth).
+handled separately) or a realm.
 
 =item checking
 
@@ -1786,27 +1786,26 @@ password strength checking, false otherwise.
 
 =item k5_admin
 
-Principal to use for authentication of Kerberos v5 B<kadmin> operations.
-If this key is not set, no propagation of operations to an MIT Kerberos v5
-KDC is done.  If this key is set, Kerberos v5 operations are preferred
-over Active Directory operations and B<kadmin-backend> assumes that
-account status changes and password changes will be propagated from
-Kerberos v5 to Active Directory by means other than this program.
+Principal to use for authentication of Kerberos B<kadmin> operations.  If
+this key is not set, no propagation of operations to a Heimdal KDC is
+done.  If this key is set, Kerberos operations are preferred over Active
+Directory operations and B<kadmin-backend> assumes that account status
+changes and password changes will be propagated from Kerberos to Active
+Directory by means other than this program.
 
 =item k5_host
 
-If set, pass this argument to Kerberos v5 B<kadmin> via the B<-s> flag to
-tell it to use a different admin server.  Mostly useful for testing to
-point B<kadmin-backend> at a different kadmin server.
+If set, connect to this server for kadmin operations instead of the
+default configured administrative server for that realm.
 
 =item k5_keytab
 
-Keytab to use for authentication of Kerberos v5 B<kadmin> operations.
+Keytab to use for authentication of Kerberos B<kadmin> operations.
 
 =item locked
 
 Set to an array containing a program (and its required arguments) to use
-to check if an instance is locked.  'Locked' means that the instance
+to check if an instance is locked.  "Locked" means that the instance
 cannot be enabled again using this interface for some policy reason.  If
 the array is undefined or empty, there is no checking for locked status.
 
@@ -1818,21 +1817,16 @@ otherwise.
 
 =back
 
-=item $K5_KADMIN
-
-Path to the regular MIT Kerberos v5 B<kadmin> command-line client.  Most
-operations are done by running this client interactively under Expect.
-
 =item $K5_KPASSWD
 
-Path to the Kerberos v5 B<kpasswd> command-line client, which is used to
+Path to the Kerberos B<kpasswd> command-line client, which is used to
 implement the C<change_passwd> function.
 
 =item $K5START
 
 Path to B<k5start>, used to obtain credentials when propagating accounts
-into Active Directory.  By default, B<kadmin-backend> searches the PATH for
-the first B<k5start> binary found.
+into Active Directory.  By default, B<kadmin-backend> searches the PATH
+for the first B<k5start> binary found.
 
 =item $KASETKEY
 
@@ -1849,14 +1843,14 @@ binary found.
 =item $LDAPADD
 
 Path to B<ldapadd>, used to create new accounts in Active Directory.  By
-default, B<kadmin-backend> searches the PATH for the first B<ldapadd> binary
-found.
+default, B<kadmin-backend> searches the PATH for the first B<ldapadd>
+binary found.
 
 =item $LDAPDELETE
 
 Path to B<ldapdelete>, used to obtain credentials when deleting accounts
-from Active Directory.  By default, B<kadmin-backend> searches the PATH for
-the first B<ldapdelete> binary found.
+from Active Directory.  By default, B<kadmin-backend> searches the PATH
+for the first B<ldapdelete> binary found.
 
 =item $LDAPMODIFY
 
@@ -1868,8 +1862,8 @@ PATH for the first B<ldapmodify> binary found.
 =item $LDAPSEARCH
 
 Path to B<ldapsearch>, used to check whether an account already exists in
-Active Directory.  By default, B<kadmin-backend> searches the PATH
-for the first B<ldapsearch> binary found.
+Active Directory.  By default, B<kadmin-backend> searches the PATH for the
+first B<ldapsearch> binary found.
 
 =item %RESERVED
 
@@ -1902,8 +1896,8 @@ The Kerberos principal used for strength checking.  When checking the
 strength of a password (the C<check_passwd> function), B<kadmin-backend>
 attempts to change the password of this principal.  This principal should
 therefore be set DISALLOW_ALL_TIX and not be used on any ACLs, since any
-user with access to the C<check_passwd> function can change its password to
-anything they choose.
+user with access to the C<check_passwd> function can change its password
+to anything they choose.
 
 =back
 
