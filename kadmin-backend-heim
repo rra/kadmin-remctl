@@ -548,10 +548,10 @@ sub kpasswd {
     $kpasswd->send ($old . "\n");
 
     my ($num, $error, $match, $before, $after)
-        = $kpasswd->expect (2, 'kpasswd: krb5_get_init_creds:',
+        = $kpasswd->expect (10, 'kpasswd: krb5_get_init_creds:',
                             'kpasswd: Password incorrect',
                             '-re', 'New password for \S+:');
-    if ($num == 1 || $num == 2) {
+    if (defined ($num) && ($num == 1 || $num == 2)) {
         if ($num == 1) {
             $after =~ s/\r?\n.*//s;
             $after =~ s/^\s+//;
