@@ -1,12 +1,5 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 3.5 (unreleased)
-
-    Increase the timeout for initial authentication during a kpasswd
-    password change to ten seconds.  The previous timeout of two seconds
-    was occasionally too short in production.  Also fix a Perl warning if
-    the initial authentication times out.
-
 kadmin-remctl 3.4 (2013-07-09)
 
     Set the disallow-svr flag on all newly-created principals.  This

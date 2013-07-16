@@ -570,8 +570,8 @@ sub kpasswd {
     }
     $kpasswd->send ($old . "\n");
     my ($num, $error, $match, $before, $after)
-        = $kpasswd->expect (10, 'kpasswd: ', 'Enter new password: ');
-    if (defined ($num) && $num == 1) {
+        = $kpasswd->expect (2, 'kpasswd: ', 'Enter new password: ');
+    if ($num == 1) {
         $after =~ s/\r?\n.*//s;
         warn "error: $after\n";
         print "retstr: $after\n";
