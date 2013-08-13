@@ -7,6 +7,10 @@ kadmin-remctl 3.5 (unreleased)
     was occasionally too short in production.  Also fix a Perl warning if
     the initial authentication times out.
 
+    In the Heimdal backend, use get instead of list to check whether a
+    given principal already exists.  list requires a complete database
+    traversal and is much more resource-intensive.
+
 kadmin-remctl 3.4 (2013-07-09)
 
     Set the disallow-svr flag on all newly-created principals.  This

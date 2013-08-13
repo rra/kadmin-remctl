@@ -265,8 +265,8 @@ sub kadmin_check {
     kadmin_config ($instance) or return;
     $principal = "$principal/$instance" if $instance;
     my $kadmin = kadmin_handle ($instance);
-    my @names = $kadmin->getPrincipals ($principal);
-    return 1 if @names;
+    my $data = $kadmin->getPrincipal ($principal);
+    return 1 if $data;
     return 0;
 }
 
