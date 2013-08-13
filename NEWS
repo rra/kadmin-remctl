@@ -3,9 +3,11 @@
 kadmin-remctl 3.5 (unreleased)
 
     Increase the timeout for initial authentication during a kpasswd
-    password change to ten seconds.  The previous timeout of two seconds
-    was occasionally too short in production.  Also fix a Perl warning if
-    the initial authentication times out.
+    password change to ten seconds, and the timeout for a successful
+    password change to sixty seconds.  The previous timeouts of two
+    seconds and thirty seconds was occasionally too short in production.
+    Also fix Perl warnings if the initial authentication or password
+    change time out.
 
     In the Heimdal backend, use get instead of list to check whether a
     given principal already exists.  list requires a complete database

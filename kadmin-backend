@@ -585,9 +585,9 @@ sub kpasswd {
     }
     $kpasswd->send ($new . "\n");
     ($num, $error, $match, $before, $after)
-        = $kpasswd->expect (30, 'Password change rejected: ',
+        = $kpasswd->expect (60, 'Password change rejected: ',
                             'Password changed.');
-    if ($num == 1) {
+    if (defined ($num) && $num == 1) {
         $after =~ s/\..*//s;
         $after =~ s/\r?\n/ /g;
         $after =~ s/\s+See the kpasswd man page.*//s;

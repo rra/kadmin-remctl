@@ -551,7 +551,7 @@ sub kpasswd {
         = $kpasswd->expect (10, 'kpasswd: krb5_get_init_creds:',
                             'kpasswd: Password incorrect',
                             '-re', 'New password for \S+:');
-    if (defined ($num) && ($num == 1 || $num == 2)) {
+    if (defined($num) && ($num == 1 || $num == 2)) {
         if ($num == 1) {
             $after =~ s/\r?\n.*//s;
             $after =~ s/^\s+//;
@@ -577,9 +577,9 @@ sub kpasswd {
     }
     $kpasswd->send ($new . "\n");
     ($num, $error, $match, $before, $after)
-        = $kpasswd->expect (30, 'Soft error : ',
+        = $kpasswd->expect (60, 'Soft error : ',
                             'Success : Password changed');
-    if ($num == 1) {
+    if (defined($num) && $num == 1) {
         $after =~ s/\..*//s;
         $after =~ s/\r?\n/ /g;
         $after =~ s/\s+See the kpasswd man page.*//s;
