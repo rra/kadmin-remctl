@@ -572,7 +572,7 @@ sub kpasswd {
     }
     $kpasswd->send ($new . "\n");
     unless ($kpasswd->expect (2, '-re',
-                              'Verifying - New password for \S+: ')) {
+                              'Verify(ing| password) - New password for \S+: ')) {
         die "error: cannot talk to $K5_KPASSWD\n";
     }
     $kpasswd->send ($new . "\n");
