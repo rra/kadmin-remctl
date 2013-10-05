@@ -332,6 +332,15 @@ sub kadmin_disable {
     $principal = "$principal/$instance" if $instance;
 
     my $kadmin = kadmin_handle ($instance);
+    my $data = eval { $kadmin->getPrincipal ($principal) };
+    if ($@) {
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot retrieve $principal: $error\n";
+        exit 1;
+    } elsif (!defined $data) {
+        warn "error: principal $principal does not exist\n";
+        exit 1;
+    }
     if (!eval { $kadmin->disablePrincipal ($principal) }) {
         my $error = $@ || "unknown error\n";
         warn "error: cannot disable $principal: $error";
@@ -354,10 +363,19 @@ sub kadmin_enable {
         }
     }
     my $kadmin = kadmin_handle ($instance);
+    my $data = eval { $kadmin->getPrincipal ($principal) };
+    if ($@) {
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot retrieve $principal: $error\n";
+        exit 1;
+    } elsif (!defined $data) {
+        warn "error: principal $principal does not exist\n";
+        exit 1;
+    }
     eval { $kadmin->enablePrincipal ($principal) };
     if ($@) {
         my $error = $@ || "unknown error\n";
-        warn "error: cannot enable $principal: $error\n";
+        warn "error: cannot enable $principal: $error";
         exit 1;
     }
 }

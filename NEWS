@@ -16,6 +16,11 @@ kadmin-remctl 3.5 (unreleased)
     In the Heimdal backend, recognize the new form of the Heimdal kpasswd
     prompt to repeat the new password.
 
+    Check the existence of the principal before enabling or disabling it
+    in the Heimdal backend so that nonexistent principals report a clearer
+    error message instead of an internal error about getAttributes
+    failure.
+
 kadmin-remctl 3.4 (2013-07-09)
 
     Set the disallow-svr flag on all newly-created principals.  This
