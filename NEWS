@@ -13,6 +13,9 @@ kadmin-remctl 3.5 (unreleased)
     given principal already exists.  list requires a complete database
     traversal and is much more resource-intensive.
 
+    In the Heimdal backend, recognize the new form of the Heimdal kpasswd
+    prompt to repeat the new password.
+
 kadmin-remctl 3.4 (2013-07-09)
 
     Set the disallow-svr flag on all newly-created principals.  This
