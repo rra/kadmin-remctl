@@ -25,6 +25,10 @@ kadmin-remctl 3.5 (unreleased)
     error message instead of an internal error about getAttributes
     failure.
 
+    Update to rra-c-util 4.10:
+
+    * Remove some unnecessary includes.
+
 kadmin-remctl 3.4 (2013-07-09)
 
     Set the disallow-svr flag on all newly-created principals.  This
