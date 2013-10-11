@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 3.5 (unreleased)
+kadmin-remctl 3.5 (2013-10-10)
 
     Increase the timeout for initial authentication during a kpasswd
     password change to ten seconds, and the timeout for a successful
