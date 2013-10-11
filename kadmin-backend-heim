@@ -265,8 +265,8 @@ sub kadmin_check {
     kadmin_config ($instance) or return;
     $principal = "$principal/$instance" if $instance;
     my $kadmin = kadmin_handle ($instance);
-    my @names = $kadmin->getPrincipals ($principal);
-    return 1 if @names;
+    my $data = $kadmin->getPrincipal ($principal);
+    return 1 if $data;
     return 0;
 }
 
@@ -332,6 +332,15 @@ sub kadmin_disable {
     $principal = "$principal/$instance" if $instance;
 
     my $kadmin = kadmin_handle ($instance);
+    my $data = eval { $kadmin->getPrincipal ($principal) };
+    if ($@) {
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot retrieve $principal: $error\n";
+        exit 1;
+    } elsif (!defined $data) {
+        warn "error: principal $principal does not exist\n";
+        exit 1;
+    }
     if (!eval { $kadmin->disablePrincipal ($principal) }) {
         my $error = $@ || "unknown error\n";
         warn "error: cannot disable $principal: $error";
@@ -354,10 +363,19 @@ sub kadmin_enable {
         }
     }
     my $kadmin = kadmin_handle ($instance);
+    my $data = eval { $kadmin->getPrincipal ($principal) };
+    if ($@) {
+        my $error = $@ || "unknown error\n";
+        warn "error: cannot retrieve $principal: $error\n";
+        exit 1;
+    } elsif (!defined $data) {
+        warn "error: principal $principal does not exist\n";
+        exit 1;
+    }
     eval { $kadmin->enablePrincipal ($principal) };
     if ($@) {
         my $error = $@ || "unknown error\n";
-        warn "error: cannot enable $principal: $error\n";
+        warn "error: cannot enable $principal: $error";
         exit 1;
     }
 }
@@ -548,10 +566,10 @@ sub kpasswd {
     $kpasswd->send ($old . "\n");
 
     my ($num, $error, $match, $before, $after)
-        = $kpasswd->expect (2, 'kpasswd: krb5_get_init_creds:',
+        = $kpasswd->expect (10, 'kpasswd: krb5_get_init_creds:',
                             'kpasswd: Password incorrect',
                             '-re', 'New password for \S+:');
-    if ($num == 1 || $num == 2) {
+    if (defined($num) && ($num == 1 || $num == 2)) {
         if ($num == 1) {
             $after =~ s/\r?\n.*//s;
             $after =~ s/^\s+//;
@@ -572,23 +590,18 @@ sub kpasswd {
     }
     $kpasswd->send ($new . "\n");
     unless ($kpasswd->expect (2, '-re',
-                              'Verifying - New password for \S+: ')) {
+                              'Verify(ing| password) - New password for \S+: ')) {
         die "error: cannot talk to $K5_KPASSWD\n";
     }
     $kpasswd->send ($new . "\n");
     ($num, $error, $match, $before, $after)
-        = $kpasswd->expect (30, 'Soft error : ',
+        = $kpasswd->expect (60, 'Soft error : ',
                             'Success : Password changed');
-    if ($num == 1) {
+    if (defined($num) && $num == 1) {
         $after =~ s/\..*//s;
         $after =~ s/\r?\n/ /g;
         $after =~ s/\s+See the kpasswd man page.*//s;
-        if ($after =~ /^External password quality program failed: (it\'s WAY|it is) too short/) {
-            $after = 'New password is too short';
-        } elsif ($after =~ /^External password quality program failed:/) {
-            $after = 'New password was found in a dictionary of possible '
-                .'passwords and therefore may be easily guessed';
-        }
+        $after =~ s/^External password quality program failed: //;
         warn "error: $after\n";
         print "retstr: $after\n";
         exit 1;

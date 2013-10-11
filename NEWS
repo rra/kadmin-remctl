@@ -1,5 +1,34 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.5 (2013-10-10)
+
+    Increase the timeout for initial authentication during a kpasswd
+    password change to ten seconds, and the timeout for a successful
+    password change to sixty seconds.  The previous timeouts of two
+    seconds and thirty seconds was occasionally too short in production.
+    Also fix Perl warnings if the initial authentication or password
+    change time out.
+
+    In the Heimdal backend, use get instead of list to check whether a
+    given principal already exists.  list requires a complete database
+    traversal and is much more resource-intensive.
+
+    In the Heimdal backend, recognize the new form of the Heimdal kpasswd
+    prompt to repeat the new password.
+
+    Stop mapping password quality errors in the Heimdal kpasswd backend.
+    Instead, remove any prefix about an external password quality program
+    and pass the rest of the error message back to the user.
+
+    Check the existence of the principal before enabling or disabling it
+    in the Heimdal backend so that nonexistent principals report a clearer
+    error message instead of an internal error about getAttributes
+    failure.
+
+    Update to rra-c-util 4.10:
+
+    * Remove some unnecessary includes.
+
 kadmin-remctl 3.4 (2013-07-09)
 
     Set the disallow-svr flag on all newly-created principals.  This
