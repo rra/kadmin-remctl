@@ -1,3 +1,16 @@
+kadmin-remctl (3.5-1) unstable; urgency=low
+
+  * New upstream release.
+    - Increase the timeouts for kpasswd interaction.
+    - Fix Perl warnings if kpasswd times out.
+    - Use get instead of list with Heimdal to check principal existence.
+    - Recognize the new Heimdal kpasswd prompts.
+    - Stop mapping password quality errors in the Heimdal backend.
+    - Check the existence of the principal before enabling or disabling it
+      in the Heimdal backend in order to report more sensible errors.
+
+ -- Russ Allbery <rra@debian.org>  Thu, 10 Oct 2013 19:09:18 -0700
+
 kadmin-remctl (3.4-1) unstable; urgency=low
 
   * New upstream release.
