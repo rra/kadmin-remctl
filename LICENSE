@@ -10,13 +10,13 @@ Copyright: 1997, 2003, 2006-2011, 2013
 License: Expat
 
 Files: *
-Copyright: 1997, 2003, 2006-2011, 2013
+Copyright: 1997, 2003, 2006-2011, 2013-2014
     The Board of Trustees of the Leland Stanford Junior University
 License: Expat
 
 Files: Makefile.in
 Copyright: 1994-2013 Free Software Foundation, Inc.
-  2007-2008, 2010-2011, 2013
+  2007-2008, 2010-2011, 2013-2014
     The Board of Trustees of the Leland Stanford Junior University
 License: FSF-unlimited and Expat
 
@@ -74,7 +74,7 @@ License: all-permissive
 
 Files: m4/gssapi.m4 m4/krb5-config.m4 m4/krb5.m4 m4/lib-depends.m4
  m4/lib-pathname.m4 m4/remctl.m4 m4/snprintf.m4 m4/vamacros.m4
-Copyright: 2005-2012
+Copyright: 2005-2013
     The Board of Trustees of the Leland Stanford Junior University
 License: unlimited
  This file is free software; the authors give unlimited permission to copy
