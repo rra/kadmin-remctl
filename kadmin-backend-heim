@@ -2,7 +2,7 @@
 #
 # kadmin-backend -- remctl interface to kadmin functionality.
 #
-# Written by Russ Allbery <rra@stanford.edu>
+# Written by Russ Allbery <eagle@eyrie.org>
 # Heimdal port written by Jon Robertson <jonrober@stanford.edu>
 # Based heavily on work by Roland Schemers
 # Copyright 2003, 2007, 2008, 2009, 2010, 2011, 2013, 2014
@@ -1955,7 +1955,7 @@ normally set by the B<remctld> server.
 
 =head1 AUTHOR
 
-Russ Allbery <rra@stanford.edu>, based heavily on work by Roland Schemers.
+Russ Allbery <eagle@eyrie.org>, based heavily on work by Roland Schemers.
 Original Heimdal port written by Jon Robertson <jonrober@stanford.edu>.
 
 =head1 COPYRIGHT AND LICENSE

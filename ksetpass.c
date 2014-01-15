@@ -11,7 +11,7 @@
  * the new password on standard input.  The password should not have a
  * trailing newline unless that's actually part of the password.
  *
- * Written by Russ Allbery <rra@stanford.edu>
+ * Written by Russ Allbery <eagle@eyrie.org>
  * Based on code developed by Derrick Brashear and Ken Hornstein of Sine
  * Nomine Associates, on behalf of Stanford University.
  * Copyright 2006, 2007, 2008, 2010

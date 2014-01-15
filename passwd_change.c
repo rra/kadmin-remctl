@@ -7,7 +7,7 @@
  * read the username of the principal whose password should be changed from
  * the command line).
  *
- * Written by Russ Allbery <rra@stanford.edu>
+ * Written by Russ Allbery <eagle@eyrie.org>
  * Copyright 1997, 2007, 2010, 2013
  *     The Board of Trustees of the Leland Stanford Junior University
  *
