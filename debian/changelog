@@ -1,3 +1,13 @@
+kadmin-remctl (3.6-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+    - Add per-instance configuration to set password expiration on initial
+      account creation.
+    - Map password quality errors on create and reset_passwd to a generic
+      error message.
+
+ -- Russ Allbery <rra@debian.org>  Wed, 15 Jan 2014 14:46:09 -0800
+
 kadmin-remctl (3.5-1) unstable; urgency=low
 
   * New upstream release.
