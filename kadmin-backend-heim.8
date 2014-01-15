@@ -133,7 +133,7 @@
 .\" ========================================================================
 .\"
 .IX Title "KADMIN-BACKEND-HEIM 8"
-.TH KADMIN-BACKEND-HEIM 8 "2013-10-10" "3.5" "kadmin-remctl"
+.TH KADMIN-BACKEND-HEIM 8 "2014-01-15" "3.6" "kadmin-remctl"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -444,6 +444,10 @@ handled separately) or a realm.
 .IX Item "checking"
 Set to a true value if passwords for this instance should be subject to
 password strength checking, false otherwise.
+.IP "expiration" 2
+.IX Item "expiration"
+If set, the number of seconds into the future at which the password for a
+newly-created account should expire.
 .IP "k5_admin" 2
 .IX Item "k5_admin"
 Principal to use for authentication of Kerberos \fBkadmin\fR operations.  If
@@ -567,11 +571,11 @@ be checked against the \s-1ACL\s0 file for that instance.  This variable is
 normally set by the \fBremctld\fR server.
 .SH "AUTHOR"
 .IX Header "AUTHOR"
-Russ Allbery <rra@stanford.edu>, based heavily on work by Roland Schemers.
+Russ Allbery <eagle@eyrie.org>, based heavily on work by Roland Schemers.
 Original Heimdal port written by Jon Robertson <jonrober@stanford.edu>.
 .SH "COPYRIGHT AND LICENSE"
 .IX Header "COPYRIGHT AND LICENSE"
-Copyright 2009, 2010, 2011, 2013 The Board of Trustees of the Leland
+Copyright 2009, 2010, 2011, 2013, 2014 The Board of Trustees of the Leland
 Stanford Junior University
 .PP
 Permission is hereby granted, free of charge, to any person obtaining a

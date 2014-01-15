@@ -2,9 +2,9 @@
 #
 # kadmin-backend -- remctl interface to kadmin functionality.
 #
-# Written by Russ Allbery <rra@stanford.edu>
+# Written by Russ Allbery <eagle@eyrie.org>
 # Based heavily on work by Roland Schemers
-# Copyright 2003, 2007, 2008, 2009, 2010, 2011, 2013
+# Copyright 2003, 2007, 2008, 2009, 2010, 2011, 2013, 2014
 #     The Board of Trustees of the Leland Stanford Junior University
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -280,6 +280,11 @@ sub kadmin_create {
     }
     if ($status ne 'enabled') {
         $command .= ' -allow_tix';
+    }
+    if ($CONFIG{$instance}{expiration}) {
+        my $expiration = time + $CONFIG{$instance}{expiration};
+        $expiration = strftime ('%Y-%m-%d %T', localtime $expiration);
+        $command .= ' -pwexpire "$expiration"';
     }
     if (exists $CONFIG{$instance}{create_opts}) {
         $command .= ' ' . $CONFIG{$instance}{create_opts};
@@ -1648,6 +1653,11 @@ Contains extra options to pass to the B<kadmin> C<addprinc> command when
 creating a new principal.  These can be any valid flags to the C<addprinc>
 command.
 
+=item expiration
+
+If set, the number of seconds into the future at which the password for a
+newly-created account should expire.
+
 =item k5_admin
 
 Principal to use for authentication of Kerberos v5 B<kadmin> operations.
@@ -1793,12 +1803,12 @@ normally set by the B<remctld> server.
 
 =head1 AUTHOR
 
-Russ Allbery <rra@stanford.edu>, based heavily on work by Roland Schemers.
+Russ Allbery <eagle@eyrie.org>, based heavily on work by Roland Schemers.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2003, 2007, 2008, 2009, 2010, 2011, 2013 The Board of Trustees
-of the Leland Stanford Junior University
+Copyright 2003, 2007, 2008, 2009, 2010, 2011, 2013, 2014 The Board of
+Trustees of the Leland Stanford Junior University
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

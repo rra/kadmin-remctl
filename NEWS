@@ -1,5 +1,28 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.6 (2014-01-15)
+
+    Add a new per-instance configuration option to set the password
+    expiration time for newly-created principals.  Be aware that this only
+    controls the initial expiration period.  After the first password
+    change, further expiration periods are normally controlled by the KDC
+    configuration or policy.
+
+    In the Heimdal backend, map password quality errors on account
+    creation or password reset to a generic error.  The kadmin protocol
+    doesn't have a mechanism for passing back the rich error message from
+    the password quality check, so all failures use the same error string.
+    Remap it here, since the error message from Heimdal is of dubious
+    accuracy.  This will only apply to sites that have patched Heimdal to
+    do password quality checks on administrative operations.
+
+    Update to rra-c-util 5.1:
+
+    * Don't attempt to use Kerberos if no Kerberos error APIs were found.
+    * Improve error handling in xasprintf and xvasprintf.
+    * Check the return status of snprintf and vsnprintf properly.
+    * Preserve errno if snprintf fails in vasprintf replacement.
+
 kadmin-remctl 3.5 (2013-10-10)
 
     Increase the timeout for initial authentication during a kpasswd

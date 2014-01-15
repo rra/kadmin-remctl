@@ -1,7 +1,7 @@
-                            kadmin-remctl 3.5
+                            kadmin-remctl 3.6
              (remctl interface for Kerberos kadmin functions)
 
-                Written by Russ Allbery <rra@stanford.edu>
+                Written by Russ Allbery <eagle@eyrie.org>
 
   Copyright 1997, 2003, 2007, 2008, 2009, 2010, 2011, 2013 The Board of
   Trustees of the Leland Stanford Junior University.  This software is
@@ -232,7 +232,7 @@ SUPPORT
   will always have the current version of this package, the current
   documentation, and pointers to any additional resources.
 
-  I welcome bug reports and patches for this package at rra@stanford.edu.
+  I welcome bug reports and patches for this package at eagle@eyrie.org.
   However, please be aware that I tend to be extremely busy and work
   projects often take priority.  I'll save your mail and get to it as soon
   as I can, but it may take me a couple of months.
