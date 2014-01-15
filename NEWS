@@ -1,5 +1,13 @@
                     User-Visible kadmin-remctl Changes
 
+kadmin-remctl 3.6 (unreleased)
+
+    Add a new per-instance configuration option to set the password
+    expiration time for newly-created principals.  Be aware that this only
+    controls the initial expiration period.  After the first password
+    change, further expiration periods are normally controlled by the KDC
+    configuration or policy.
+
 kadmin-remctl 3.5 (2013-10-10)
 
     Increase the timeout for initial authentication during a kpasswd

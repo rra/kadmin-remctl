@@ -5,7 +5,7 @@
 # Written by Russ Allbery <rra@stanford.edu>
 # Heimdal port written by Jon Robertson <jonrober@stanford.edu>
 # Based heavily on work by Roland Schemers
-# Copyright 2003, 2007, 2008, 2009, 2010, 2011, 2013
+# Copyright 2003, 2007, 2008, 2009, 2010, 2011, 2013, 2014
 #     The Board of Trustees of the Leland Stanford Junior University
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -290,6 +290,12 @@ sub kadmin_create {
         $attrs |= KRB5_KDB_DISALLOW_ALL_TIX;
     }
     $princdata->setAttributes ($attrs);
+
+    # Set a password expiration if we were told to.
+    if ($CONFIG{$instance}{expiration}) {
+        my $expiration = time + $CONFIG{$instance}{expiration};
+        $princdata->setPwExpiration ($expiration);
+    }
 
     if (!eval { $kadmin->createPrincipal ($princdata, $password, 0) }) {
         my $error = $@ || "unknown error\n";
@@ -1798,6 +1804,11 @@ handled separately) or a realm.
 Set to a true value if passwords for this instance should be subject to
 password strength checking, false otherwise.
 
+=item expiration
+
+If set, the number of seconds into the future at which the password for a
+newly-created account should expire.
+
 =item k5_admin
 
 Principal to use for authentication of Kerberos B<kadmin> operations.  If
@@ -1937,7 +1948,7 @@ Original Heimdal port written by Jon Robertson <jonrober@stanford.edu>.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2009, 2010, 2011, 2013 The Board of Trustees of the Leland
+Copyright 2009, 2010, 2011, 2013, 2014 The Board of Trustees of the Leland
 Stanford Junior University
 
 Permission is hereby granted, free of charge, to any person obtaining a
