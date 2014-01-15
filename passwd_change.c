@@ -8,7 +8,7 @@
  * the command line).
  *
  * Written by Russ Allbery <eagle@eyrie.org>
- * Copyright 1997, 2007, 2010, 2013
+ * Copyright 1997, 2007, 2010, 2013, 2014
  *     The Board of Trustees of the Leland Stanford Junior University
  *
  * See LICENSE for licensing terms.
@@ -93,10 +93,7 @@ login(krb5_context ctx, char *service)
     krb5_ccache ccache = NULL;
     krb5_principal princ = NULL;
     krb5_creds creds;
-    bool creds_valid = false;
     krb5_get_init_creds_opt *opts;
-
-    memset(&creds, 0, sizeof(creds));
 
     /*
      * First of all, we have to figure out what the admin principal is.  We do
@@ -121,13 +118,13 @@ login(krb5_context ctx, char *service)
         die_krb5(ctx, status, "cannot allocate credential options");
     krb5_get_init_creds_opt_set_default_flags(ctx, "passwd_change",
                                               princ->realm, opts);
+    memset(&creds, 0, sizeof(creds));
     status = krb5_get_init_creds_password(ctx, &creds, princ, NULL,
                  krb5_prompter_posix, NULL, 0, service, opts);
     if (status != 0) {
         warn_krb5(ctx, status, "authentication failed");
         goto fail;
     }
-    creds_valid = true;
 
     /* Put the new credentials into a memory cache. */
     status = krb5_cc_resolve(ctx, CACHE_NAME, &ccache);
@@ -151,8 +148,6 @@ fail:
         krb5_cc_close(ctx, ccache);
     if (princ != NULL)
         krb5_free_principal(ctx, princ);
-    if (creds_valid)
-        krb5_free_cred_contents(ctx, &creds);
     return -1;
 }
 
