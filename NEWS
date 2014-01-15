@@ -1,6 +1,6 @@
                     User-Visible kadmin-remctl Changes
 
-kadmin-remctl 3.6 (unreleased)
+kadmin-remctl 3.6 (2014-01-15)
 
     Add a new per-instance configuration option to set the password
     expiration time for newly-created principals.  Be aware that this only
