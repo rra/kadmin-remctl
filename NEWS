@@ -16,6 +16,13 @@ kadmin-remctl 3.6 (unreleased)
     accuracy.  This will only apply to sites that have patched Heimdal to
     do password quality checks on administrative operations.
 
+    Update to rra-c-util 5.1:
+
+    * Don't attempt to use Kerberos if no Kerberos error APIs were found.
+    * Improve error handling in xasprintf and xvasprintf.
+    * Check the return status of snprintf and vsnprintf properly.
+    * Preserve errno if snprintf fails in vasprintf replacement.
+
 kadmin-remctl 3.5 (2013-10-10)
 
     Increase the timeout for initial authentication during a kpasswd
