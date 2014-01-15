@@ -45,6 +45,12 @@ use Time::Seconds;
 # Disable sending of kadmin's output to our standard output.
 $Expect::Log_Stdout = 0;
 
+# Generic error message used when account creation or password reset fail due
+# to a password quality error.  kadmin can't return the rich error message
+# from the password quality check, so we have to collapse all error messages
+# down to a single string.
+our $GENERIC_ERROR = 'password may be vulnerable to attack';
+
 # Account used to test password strength.
 our $STRENGTH   = 'service/password-strength';
 
@@ -299,6 +305,9 @@ sub kadmin_create {
 
     if (!eval { $kadmin->createPrincipal ($princdata, $password, 0) }) {
         my $error = $@ || "unknown error\n";
+        if ($error =~ /Password is in the password dictionary/) {
+            $error = $GENERIC_ERROR . "\n";
+        }
         warn "error: cannot create $principal: $error";
         exit 1;
     }
@@ -516,6 +525,9 @@ sub kadmin_reset {
     eval { $kadmin->changePassword ($principal, $password) };
     if ($@) {
         my $error = $@ || "unknown error\n";
+        if ($error =~ /Password is in the password dictionary/) {
+            $error = $GENERIC_ERROR . "\n";
+        }
         warn "error: cannot change password for $principal: $error\n";
         exit 1;
     }

@@ -8,6 +8,14 @@ kadmin-remctl 3.6 (unreleased)
     change, further expiration periods are normally controlled by the KDC
     configuration or policy.
 
+    In the Heimdal backend, map password quality errors on account
+    creation or password reset to a generic error.  The kadmin protocol
+    doesn't have a mechanism for passing back the rich error message from
+    the password quality check, so all failures use the same error string.
+    Remap it here, since the error message from Heimdal is of dubious
+    accuracy.  This will only apply to sites that have patched Heimdal to
+    do password quality checks on administrative operations.
+
 kadmin-remctl 3.5 (2013-10-10)
 
     Increase the timeout for initial authentication during a kpasswd
