@@ -5,6 +5,7 @@ kadmin-remctl (3.6-1) UNRELEASED; urgency=low
       account creation.
     - Map password quality errors on create and reset_passwd to a generic
       error message.
+  * Remove now-unnecessary dh_builddeb override to force xz compression.
 
  -- Russ Allbery <rra@debian.org>  Wed, 15 Jan 2014 14:46:09 -0800
 
