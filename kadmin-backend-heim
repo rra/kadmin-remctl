@@ -49,7 +49,7 @@ $Expect::Log_Stdout = 0;
 # to a password quality error.  kadmin can't return the rich error message
 # from the password quality check, so we have to collapse all error messages
 # down to a single string.
-our $GENERIC_ERROR = 'password may be vulnerable to attack';
+our $GENERIC_ERROR = 'Password may be vulnerable to attack';
 
 # Account used to test password strength.
 our $STRENGTH   = 'service/password-strength';
